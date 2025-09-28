@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseNYC - Google Maps API</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #1d1d1f;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #86868b;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .events-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 350px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        .events-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 16px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #007AFF;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        .map-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .control-button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(0, 0, 0, 0.05);
+            color: #1d1d1f;
+        }
+
+        .control-button:hover {
+            background: rgba(0, 122, 255, 0.1);
+        }
+
+        .control-button.active {
+            background: #007AFF;
+            color: white;
+        }
+
+        .event-item {
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .event-item:hover {
+            background: rgba(0, 122, 255, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .event-category {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .category-music { background: #FF3B30; color: white; }
+        .category-art { background: #007AFF; color: white; }
+        .category-food { background: #34C759; color: white; }
+        .category-comedy { background: #FF9500; color: white; }
+        .category-free { background: #FFCC00; color: black; }
+
+        .event-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 4px;
+        }
+
+        .event-details {
+            font-size: 12px;
+            color: #86868b;
+            line-height: 1.3;
+        }
+
+        .map-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-width: 300px;
+        }
+
+        .map-info-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+
+        .map-info-text {
+            font-size: 12px;
+            color: #86868b;
+            line-height: 1.4;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            z-index: 2000;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e5e5e7;
+            border-top: 3px solid #007AFF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .events-panel {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                top: auto;
+                width: auto;
+                border-radius: 16px 16px 0 0;
+                max-height: 50vh;
+            }
+            
+            .map-info {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">PulseNYC - Google Maps API</h1>
+            <p class="subtitle">Advanced interactive map with search and directions</p>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Loading Google Maps...</p>
+            </div>
+            
+            <div class="events-panel">
+                <h2 class="events-title">NYC Events</h2>
+                
+                <input type="text" class="search-box" placeholder="Search events or locations..." id="searchBox">
+                
+                <div class="map-controls">
+                    <button class="control-button active" onclick="showAllEvents()">All</button>
+                    <button class="control-button" onclick="filterEvents('music')">Music</button>
+                    <button class="control-button" onclick="filterEvents('art')">Art</button>
+                    <button class="control-button" onclick="filterEvents('food')">Food</button>
+                    <button class="control-button" onclick="filterEvents('comedy')">Comedy</button>
+                    <button class="control-button" onclick="filterEvents('free')">Free</button>
+                </div>
+
+                <div id="eventsList">
+                    <!-- Events will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="map-info">
+                <div class="map-info-title">🗺️ Google Maps Features</div>
+                <div class="map-info-text">
+                    • Click markers for event details<br>
+                    • Use search to find locations<br>
+                    • Get directions to events<br>
+                    • Street View integration<br>
+                    • Real-time traffic data
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Maps API -->
+    <script>
+        // Note: Replace 'YOUR_API_KEY' with your actual Google Maps API key
+        const API_KEY = 'YOUR_API_KEY';
+        
+        // Event data
+        const events = [
+            {
+                id: 'jazz',
+                name: 'Jazz Night at Blue Note',
+                category: 'music',
+                lat: 40.7306,
+                lng: -74.0023,
+                address: '131 W 3rd St, New York, NY 10012',
+                time: '8:00 PM',
+                price: '$25',
+                description: 'An evening of smooth jazz featuring local artists'
+            },
+            {
+                id: 'gallery',
+                name: 'Art Gallery Opening',
+                category: 'art',
+                lat: 40.7256,
+                lng: -73.9943,
+                address: '123 Spring St, New York, NY 10012',
+                time: '6:00 PM',
+                price: 'Free',
+                description: 'Contemporary art exhibition opening reception'
+            },
+            {
+                id: 'food',
+                name: 'Food Truck Festival',
+                category: 'food',
+                lat: 40.7356,
+                lng: -73.9906,
+                address: 'Union Square, New York, NY 10003',
+                time: '12:00 PM',
+                price: 'Varies',
+                description: 'Local food trucks serving diverse cuisines'
+            },
+            {
+                id: 'comedy',
+                name: 'Comedy Show at The Comedy Cellar',
+                category: 'comedy',
+                lat: 40.7306,
+                lng: -73.9983,
+                address: '117 MacDougal St, New York, NY 10012',
+                time: '9:30 PM',
+                price: '$20',
+                description: 'Stand-up comedy featuring local comedians'
+            },
+            {
+                id: 'yoga',
+                name: 'Free Yoga in the Park',
+                category: 'free',
+                lat: 40.7308,
+                lng: -73.9973,
+                address: 'Washington Square Park, New York, NY 10012',
+                time: '7:00 AM',
+                price: 'Free',
+                description: 'Morning yoga session in the park'
+            }
+        ];
+
+        let map;
+        let markers = [];
+        let infoWindow;
+
+        // Initialize map
+        function initMap() {
+            // Hide loading
+            document.getElementById('loading').style.display = 'none';
+
+            // Create map
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 40.7282, lng: -73.9857 },
+                zoom: 13,
+                styles: [
+                    {
+                        featureType: 'all',
+                        elementType: 'geometry.fill',
+                        stylers: [{ color: '#f5f5f5' }]
+                    },
+                    {
+                        featureType: 'water',
+                        elementType: 'geometry',
+                        stylers: [{ color: '#c9c9c9' }]
+                    },
+                    {
+                        featureType: 'poi',
+                        elementType: 'labels.text.fill',
+                        stylers: [{ color: '#757575' }]
+                    },
+                    {
+                        featureType: 'poi.park',
+                        elementType: 'geometry',
+                        stylers: [{ color: '#c5e1a5' }]
+                    },
+                    {
+                        featureType: 'road',
+                        elementType: 'geometry',
+                        stylers: [{ color: '#ffffff' }]
+                    },
+                    {
+                        featureType: 'road.arterial',
+                        elementType: 'labels.text.fill',
+                        stylers: [{ color: '#757575' }]
+                    },
+                    {
+                        featureType: 'road.highway',
+                        elementType: 'geometry',
+                        stylers: [{ color: '#dadada' }]
+                    },
+                    {
+                        featureType: 'road.highway',
+                        elementType: 'labels.text.fill',
+                        stylers: [{ color: '#616161' }]
+                    },
+                    {
+                        featureType: 'road.local',
+                        elementType: 'labels.text.fill',
+                        stylers: [{ color: '#9e9e9e' }]
+                    },
+                    {
+                        featureType: 'transit.line',
+                        elementType: 'geometry',
+                        stylers: [{ color: '#e5e5e5' }]
+                    },
+                    {
+                        featureType: 'transit.station',
+                        elementType: 'geometry',
+                        stylers: [{ color: '#eeeeee' }]
+                    },
+                    {
+                        featureType: 'landscape',
+                        elementType: 'geometry',
+                        stylers: [{ color: '#f5f5f5' }]
+                    }
+                ]
+            });
+
+            // Create info window
+            infoWindow = new google.maps.InfoWindow();
+
+            // Add markers
+            addMarkers();
+
+            // Populate events list
+            populateEventsList();
+
+            // Add search functionality
+            addSearchBox();
+        }
+
+        // Add markers to map
+        function addMarkers() {
+            events.forEach(event => {
+                const marker = new google.maps.Marker({
+                    position: { lat: event.lat, lng: event.lng },
+                    map: map,
+                    title: event.name,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 15,
+                        fillColor: getCategoryColor(event.category),
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 3
+                    }
+                });
+
+                // Add click listener
+                marker.addListener('click', () => {
+                    showEventInfo(event, marker);
+                });
+
+                markers.push(marker);
+            });
+        }
+
+        // Show event info
+        function showEventInfo(event, marker) {
+            const content = `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; min-width: 250px;">
+                    <h3 style="margin: 0 0 8px 0; color: #1d1d1f; font-size: 18px;">${event.name}</h3>
+                    <div style="background: ${getCategoryColor(event.category)}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; display: inline-block; margin-bottom: 8px;">
+                        ${getCategoryEmoji(event.category)} ${event.category.toUpperCase()}
+                    </div>
+                    <p style="margin: 0 0 4px 0; color: #86868b; font-size: 14px;">📍 ${event.address}</p>
+                    <p style="margin: 0 0 4px 0; color: #86868b; font-size: 14px;">🕐 ${event.time} • 💰 ${event.price}</p>
+                    <p style="margin: 8px 0 0 0; color: #1d1d1f; font-size: 14px;">${event.description}</p>
+                    <div style="margin-top: 12px;">
+                        <button onclick="getDirections('${event.address}')" style="
+                            background: #007AFF;
+                            color: white;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 8px;
+                            font-size: 12px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            margin-right: 8px;
+                        ">Directions</button>
+                        <button onclick="learnMore('${event.id}')" style="
+                            background: rgba(0, 0, 0, 0.05);
+                            color: #1d1d1f;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 8px;
+                            font-size: 12px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">Learn More</button>
+                    </div>
+                </div>
+            `;
+
+            infoWindow.setContent(content);
+            infoWindow.open(map, marker);
+        }
+
+        // Get directions
+        function getDirections(address) {
+            const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
+            window.open(directionsUrl, '_blank');
+        }
+
+        // Learn more
+        function learnMore(eventId) {
+            const event = events.find(e => e.id === eventId);
+            if (event) {
+                alert(`Learn More: ${event.name}\n\nIn a real app, this would open a detailed event page with:\n- Booking options\n- Reviews and ratings\n- Event photos\n- Social sharing\n- Calendar integration`);
+            }
+        }
+
+        // Add search box
+        function addSearchBox() {
+            const searchBox = new google.maps.places.SearchBox(document.getElementById('searchBox'));
+            
+            searchBox.addListener('places_changed', () => {
+                const places = searchBox.getPlaces();
+                if (places.length === 0) return;
+
+                const bounds = new google.maps.LatLngBounds();
+                places.forEach(place => {
+                    if (place.geometry && place.geometry.location) {
+                        bounds.extend(place.geometry.location);
+                    }
+                });
+                map.fitBounds(bounds);
+            });
+        }
+
+        // Filter events
+        function filterEvents(category) {
+            document.querySelectorAll('.control-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            const filteredEvents = category === 'all' ? events : events.filter(e => e.category === category);
+            
+            // Show/hide markers
+            markers.forEach((marker, index) => {
+                const event = events[index];
+                if (category === 'all' || event.category === category) {
+                    marker.setMap(map);
+                } else {
+                    marker.setMap(null);
+                }
+            });
+
+            populateEventsList(filteredEvents);
+        }
+
+        function showAllEvents() {
+            document.querySelectorAll('.control-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Show all markers
+            markers.forEach(marker => {
+                marker.setMap(map);
+            });
+
+            populateEventsList(events);
+        }
+
+        // Populate events list
+        function populateEventsList(filteredEvents = events) {
+            const eventsList = document.getElementById('eventsList');
+            eventsList.innerHTML = '';
+
+            filteredEvents.forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'event-item';
+                eventDiv.onclick = () => {
+                    map.setCenter({ lat: event.lat, lng: event.lng });
+                    map.setZoom(16);
+                    const marker = markers[events.indexOf(event)];
+                    showEventInfo(event, marker);
+                };
+
+                eventDiv.innerHTML = `
+                    <div class="event-category category-${event.category}">${getCategoryEmoji(event.category)} ${event.category.toUpperCase()}</div>
+                    <div class="event-title">${event.name}</div>
+                    <div class="event-details">
+                        📍 ${event.address}<br>
+                        🕐 ${event.time} • 💰 ${event.price}
+                    </div>
+                `;
+
+                eventsList.appendChild(eventDiv);
+            });
+        }
+
+        // Helper functions
+        function getCategoryColor(category) {
+            const colors = {
+                'music': '#FF3B30',
+                'art': '#007AFF',
+                'food': '#34C759',
+                'comedy': '#FF9500',
+                'free': '#FFCC00'
+            };
+            return colors[category] || '#86868b';
+        }
+
+        function getCategoryEmoji(category) {
+            const emojis = {
+                'music': '🎵',
+                'art': '🎨',
+                'food': '🍽️',
+                'comedy': '😂',
+                'free': '🆓'
+            };
+            return emojis[category] || '📍';
+        }
+
+        // Load Google Maps API
+        function loadGoogleMaps() {
+            if (API_KEY === 'YOUR_API_KEY') {
+                // Fallback for demo
+                document.getElementById('loading').innerHTML = `
+                    <div class="spinner"></div>
+                    <p>Demo Mode - No API Key</p>
+                    <p style="font-size: 12px; color: #86868b; margin-top: 8px;">
+                        To use Google Maps API:<br>
+                        1. Get API key from Google Cloud Console<br>
+                        2. Replace 'YOUR_API_KEY' in the code<br>
+                        3. Enable Maps JavaScript API
+                    </p>
+                `;
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places&callback=initMap`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+
+        // Initialize
+        loadGoogleMaps();
+    </script>
+</body>
+</html>

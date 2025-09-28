@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseNYC - Simple Google Maps</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #1d1d1f;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #86868b;
+        }
+
+        .map-container {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+        }
+
+        .map-wrapper {
+            flex: 2;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .map-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .events-panel {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        .events-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 20px;
+        }
+
+        .event-item {
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .event-item:hover {
+            background: rgba(0, 122, 255, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .event-category {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .category-music { background: #FF3B30; color: white; }
+        .category-art { background: #007AFF; color: white; }
+        .category-food { background: #34C759; color: white; }
+        .category-comedy { background: #FF9500; color: white; }
+        .category-free { background: #FFCC00; color: black; }
+
+        .event-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 4px;
+        }
+
+        .event-details {
+            font-size: 14px;
+            color: #86868b;
+            line-height: 1.4;
+        }
+
+        .map-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .control-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(0, 0, 0, 0.05);
+            color: #1d1d1f;
+        }
+
+        .control-button:hover {
+            background: rgba(0, 122, 255, 0.1);
+        }
+
+        .control-button.active {
+            background: #007AFF;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .map-container {
+                flex-direction: column;
+            }
+            
+            .map-wrapper {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">PulseNYC - Event Discovery</h1>
+            <p class="subtitle">Interactive map showing NYC events and venues</p>
+        </div>
+
+        <div class="map-container">
+            <div class="map-wrapper">
+                <!-- Google Maps Embed -->
+                <iframe 
+                    class="map-iframe"
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3024.2216901296855!2d-73.98784668459418!3d40.74844097932681!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c259a9b3117469%3A0xd134e199a405a163!2sEmpire%20State%20Building!5e0!3m2!1sen!2sus!4v1699123456789!5m2!1sen!2sus" 
+                    allowfullscreen="" 
+                    loading="lazy" 
+                    referrerpolicy="no-referrer-when-downgrade">
+                </iframe>
+            </div>
+
+            <div class="events-panel">
+                <h2 class="events-title">NYC Events</h2>
+                
+                <div class="map-controls">
+                    <button class="control-button active" onclick="showAllEvents()">All Events</button>
+                    <button class="control-button" onclick="filterEvents('music')">Music</button>
+                    <button class="control-button" onclick="filterEvents('art')">Art</button>
+                    <button class="control-button" onclick="filterEvents('food')">Food</button>
+                </div>
+
+                <div class="event-item" onclick="showEvent('jazz')">
+                    <div class="event-category category-music">🎵 Music</div>
+                    <div class="event-title">Jazz Night at Blue Note</div>
+                    <div class="event-details">
+                        📍 131 W 3rd St, New York, NY 10012<br>
+                        🕐 8:00 PM • 💰 $25
+                    </div>
+                </div>
+
+                <div class="event-item" onclick="showEvent('gallery')">
+                    <div class="event-category category-art">🎨 Art</div>
+                    <div class="event-title">Art Gallery Opening</div>
+                    <div class="event-details">
+                        📍 123 Spring St, New York, NY 10012<br>
+                        🕐 6:00 PM • 🆓 Free
+                    </div>
+                </div>
+
+                <div class="event-item" onclick="showEvent('food')">
+                    <div class="event-category category-food">🍽️ Food & Drink</div>
+                    <div class="event-title">Food Truck Festival</div>
+                    <div class="event-details">
+                        📍 Union Square, New York, NY 10003<br>
+                        🕐 12:00 PM • 💰 Varies
+                    </div>
+                </div>
+
+                <div class="event-item" onclick="showEvent('comedy')">
+                    <div class="event-category category-comedy">😂 Comedy</div>
+                    <div class="event-title">Comedy Show at The Comedy Cellar</div>
+                    <div class="event-details">
+                        📍 117 MacDougal St, New York, NY 10012<br>
+                        🕐 9:30 PM • 💰 $20
+                    </div>
+                </div>
+
+                <div class="event-item" onclick="showEvent('yoga')">
+                    <div class="event-category category-free">🆓 Free</div>
+                    <div class="event-title">Free Yoga in the Park</div>
+                    <div class="event-details">
+                        📍 Washington Square Park, New York, NY 10012<br>
+                        🕐 7:00 AM • 🆓 Free
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showEvent(eventId) {
+            const events = {
+                'jazz': 'Jazz Night at Blue Note - Blue Note Jazz Club',
+                'gallery': 'Art Gallery Opening - SoHo Gallery',
+                'food': 'Food Truck Festival - Union Square',
+                'comedy': 'Comedy Show - The Comedy Cellar',
+                'yoga': 'Free Yoga - Washington Square Park'
+            };
+            
+            alert(`Selected: ${events[eventId]}\n\nIn a real app, this would:\n- Center the map on the event location\n- Show detailed event information\n- Provide booking options`);
+        }
+
+        function showAllEvents() {
+            document.querySelectorAll('.control-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('.event-item').forEach(item => {
+                item.style.display = 'block';
+            });
+        }
+
+        function filterEvents(category) {
+            document.querySelectorAll('.control-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('.event-item').forEach(item => {
+                const categoryClass = `category-${category}`;
+                if (item.querySelector(`.${categoryClass}`)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // Add hover effects
+        document.querySelectorAll('.event-item').forEach(item => {
+            item.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-4px) scale(1.02)';
+            });
+            
+            item.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        console.log('Simple Google Maps version loaded!');
+    </script>
+</body>
+</html>

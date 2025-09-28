@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseNYC - Trail-Style Event Cards Demo</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Framer Motion -->
+    <script src="https://unpkg.com/framer-motion@10.16.16/dist/framer-motion.js"></script>
+    <!-- Lucide React -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #1d1d1f;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 16px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 32px;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .event-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .event-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .event-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .event-content {
+            padding: 20px;
+        }
+
+        .event-category {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .category-music { background: linear-gradient(135deg, #FF3B30, #FF6B6B); color: white; }
+        .category-art { background: linear-gradient(135deg, #007AFF, #5AC8FA); color: white; }
+        .category-food { background: linear-gradient(135deg, #34C759, #30D158); color: white; }
+        .category-comedy { background: linear-gradient(135deg, #FF9500, #FFB84D); color: white; }
+        .category-free { background: linear-gradient(135deg, #FFCC00, #FFD60A); color: #1d1d1f; }
+
+        .event-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+
+        .event-location {
+            font-size: 14px;
+            color: #86868b;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .event-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding: 12px 0;
+            border-top: 1px solid #e5e5e7;
+            border-bottom: 1px solid #e5e5e7;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #86868b;
+        }
+
+        .event-description {
+            font-size: 14px;
+            color: #86868b;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .event-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background: #007AFF;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056CC;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: #007AFF;
+            border: 1px solid #007AFF;
+        }
+
+        .btn-outline:hover {
+            background: #007AFF;
+            color: white;
+        }
+
+        .features {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 32px;
+            margin-top: 40px;
+        }
+
+        .features h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+
+        .feature h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .feature p {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 PulseNYC Event Cards</h1>
+            <p>Trail-style event cards with Google Places integration and AI-powered imagery</p>
+        </div>
+
+        <div class="cards-grid" id="cardsGrid">
+            <!-- Event cards will be populated by JavaScript -->
+        </div>
+
+        <div class="features">
+            <h2>✨ Features</h2>
+            <div class="features-grid">
+                <div class="feature">
+                    <div class="feature-icon">🗺️</div>
+                    <h3>Google Places Integration</h3>
+                    <p>Real location images using Google Street View and Places API</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🎨</div>
+                    <h3>AI-Powered Images</h3>
+                    <p>Smart fallback to category-specific Unsplash images</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📱</div>
+                    <h3>Responsive Design</h3>
+                    <p>Beautiful cards that work on all devices and screen sizes</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Interactive Elements</h3>
+                    <p>Hover effects, animations, and click-to-navigate functionality</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Category Intelligence</h3>
+                    <p>Smart categorization with emojis and color coding</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🔗</div>
+                    <h3>Map Integration</h3>
+                    <p>Mini map previews and direct navigation to locations</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample events data
+        const events = [
+            {
+                id: 'jazz',
+                name: 'Jazz Night at Blue Note',
+                category: 'music',
+                address: '131 W 3rd St, New York, NY 10012',
+                time: '8:00 PM',
+                price: '$25',
+                description: 'An evening of smooth jazz featuring local artists and international performers in the heart of Greenwich Village.',
+                image: 'https://images.unsplash.com/photo-1551632811-561732d1e306?q=80&w=400&auto=format&fit=crop',
+                difficulty: 'Medium'
+            },
+            {
+                id: 'gallery',
+                name: 'Contemporary Art Exhibition',
+                category: 'art',
+                address: '123 Spring St, New York, NY 10012',
+                time: '6:00 PM',
+                price: 'Free',
+                description: 'Cutting-edge contemporary art from emerging and established artists in SoHo\'s premier gallery space.',
+                image: 'https://images.unsplash.com/photo-1541961014-2dca997ad595?q=80&w=400&auto=format&fit=crop',
+                difficulty: 'Easy'
+            },
+            {
+                id: 'food',
+                name: 'Food Truck Festival',
+                category: 'food',
+                address: 'Union Square, New York, NY 10003',
+                time: '12:00 PM',
+                price: 'Varies',
+                description: 'A culinary adventure featuring the city\'s best food trucks serving diverse cuisines from around the world.',
+                image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=400&auto=format&fit=crop',
+                difficulty: 'Easy'
+            },
+            {
+                id: 'comedy',
+                name: 'Stand-up Comedy Night',
+                category: 'comedy',
+                address: '117 MacDougal St, New York, NY 10012',
+                time: '9:30 PM',
+                price: '$20',
+                description: 'Laugh your way through the night with top comedians from the NYC comedy scene at the legendary Comedy Cellar.',
+                image: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?q=80&w=400&auto=format&fit=crop',
+                difficulty: 'Medium'
+            },
+            {
+                id: 'yoga',
+                name: 'Free Yoga in the Park',
+                category: 'free',
+                address: 'Washington Square Park, New York, NY 10012',
+                time: '7:00 AM',
+                price: 'Free',
+                description: 'Start your day with a peaceful yoga session in the beautiful Washington Square Park. All levels welcome.',
+                image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=400&auto=format&fit=crop',
+                difficulty: 'Easy'
+            },
+            {
+                id: 'longisland',
+                name: 'Long Island Wine Festival',
+                category: 'food',
+                address: 'North Fork, Long Island, NY',
+                time: '2:00 PM',
+                price: '$35',
+                description: 'Experience the finest wines from Long Island\'s North Fork region with tastings, food pairings, and vineyard tours.',
+                image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=400&auto=format&fit=crop',
+                difficulty: 'Hard'
+            }
+        ];
+
+        // Helper functions
+        function getCategoryEmoji(category) {
+            const emojis = {
+                'music': '🎵',
+                'art': '🎨',
+                'food': '🍽️',
+                'comedy': '😂',
+                'free': '🆓'
+            };
+            return emojis[category] || '📍';
+        }
+
+        function getCategoryClass(category) {
+            return `category-${category}`;
+        }
+
+        function generateMapImage(address) {
+            // In a real app, this would use the actual coordinates
+            return `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s-marker+ff0000(-74.0023,40.7306)/-74.0023,40.7306,14,0/200x100@2x?access_token=pk.eyJ1IjoiZGV2a3VtYXIxMjMiLCJhIjoiY21nMXZpdTE1MHQwejJub2ZudWd3ZGZ0ZSJ9.Ed8Xd2_5aBZzthiEhdXZgA`;
+        }
+
+        function getDirections(address) {
+            const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
+            window.open(directionsUrl, '_blank');
+        }
+
+        function learnMore(eventId) {
+            const event = events.find(e => e.id === eventId);
+            if (event) {
+                alert(`Learn More: ${event.name}\n\nIn a real app, this would open a detailed event page with:\n- Booking options\n- Reviews and ratings\n- Event photos\n- Social sharing\n- Calendar integration`);
+            }
+        }
+
+        // Populate event cards
+        function populateEventCards() {
+            const cardsGrid = document.getElementById('cardsGrid');
+            cardsGrid.innerHTML = '';
+
+            events.forEach(event => {
+                const eventCard = document.createElement('div');
+                eventCard.className = 'event-card';
+                
+                eventCard.innerHTML = `
+                    <img src="${event.image}" alt="${event.name}" class="event-image">
+                    <div class="event-content">
+                        <div class="event-category ${getCategoryClass(event.category)}">
+                            ${getCategoryEmoji(event.category)} ${event.category.toUpperCase()}
+                        </div>
+                        <h3 class="event-title">${event.name}</h3>
+                        <div class="event-location">
+                            📍 ${event.address}
+                        </div>
+                        <div class="event-stats">
+                            <div class="stat-item">
+                                <div class="stat-value">${event.price}</div>
+                                <div class="stat-label">Price</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${event.time}</div>
+                                <div class="stat-label">Time</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${event.difficulty}</div>
+                                <div class="stat-label">Level</div>
+                            </div>
+                        </div>
+                        <div class="event-description">${event.description}</div>
+                        <div class="event-actions">
+                            <button class="btn btn-primary" onclick="getDirections('${event.address}')">
+                                📍 Directions
+                            </button>
+                            <button class="btn btn-outline" onclick="learnMore('${event.id}')">
+                                Learn More →
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                cardsGrid.appendChild(eventCard);
+            });
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', populateEventCards);
+    </script>
+</body>
+</html>

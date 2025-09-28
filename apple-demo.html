@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseNYC - Apple Style Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #1d1d1f;
+            overflow: hidden;
+            font-weight: 400;
+            letter-spacing: -0.2px;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Apple-style Status Bar */
+        .status-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 2000;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        .battery {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .battery-icon {
+            width: 17px;
+            height: 10px;
+            border: 1px solid #1d1d1f;
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .battery-fill {
+            width: 13px;
+            height: 6px;
+            background: #1d1d1f;
+            border-radius: 1px;
+            margin: 1px;
+        }
+
+        .wifi-icon {
+            width: 24px;
+            height: 11px;
+            border: 1px solid #1d1d1f;
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .wifi-icon::after {
+            content: '';
+            position: absolute;
+            right: 1px;
+            top: 1px;
+            width: 1px;
+            height: 3px;
+            background: #1d1d1f;
+            border-radius: 0 1px 1px 0;
+        }
+
+        /* Apple-style Navigation */
+        .nav-bar {
+            position: absolute;
+            top: 44px;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 2000;
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .menu-button {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .menu-button:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .menu-line {
+            width: 16px;
+            height: 2px;
+            background: #1d1d1f;
+            border-radius: 1px;
+        }
+
+        .app-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1d1d1f;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .event-count {
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1d1d1f;
+        }
+
+        /* Apple-style Category Filter */
+        .category-filter {
+            position: absolute;
+            top: 104px;
+            left: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .filter-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 20px;
+            border: none;
+            background: rgba(0, 0, 0, 0.05);
+            color: #1d1d1f;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            min-width: 100px;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            letter-spacing: -0.2px;
+        }
+
+        .filter-btn:hover {
+            background: rgba(0, 122, 255, 0.1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .filter-btn.active {
+            background: #007AFF;
+            color: #ffffff;
+            box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+        }
+
+        .filter-btn .emoji {
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .filter-btn .label {
+            line-height: 1;
+        }
+
+        .filter-btn .count {
+            background: rgba(0, 0, 0, 0.1);
+            color: #1d1d1f;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            min-width: 20px;
+            text-align: center;
+            line-height: 1;
+        }
+
+        .filter-btn.active .count {
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+        }
+
+        /* Apple-style Map Area */
+        .map-area {
+            margin-top: 164px;
+            height: calc(100vh - 164px);
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-placeholder {
+            text-align: center;
+            color: #1d1d1f;
+        }
+
+        .map-placeholder h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1d1d1f;
+        }
+
+        .map-placeholder p {
+            font-size: 16px;
+            color: #86868b;
+            margin-bottom: 24px;
+        }
+
+        .map-icon {
+            width: 80px;
+            height: 80px;
+            background: #007AFF;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 36px;
+            color: white;
+            box-shadow: 0 8px 30px rgba(0, 122, 255, 0.3);
+        }
+
+        /* Apple-style Event Cards */
+        .event-cards {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .event-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 16px;
+            min-width: 280px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .event-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .event-category {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .category-music { background: #FF3B30; color: white; }
+        .category-art { background: #007AFF; color: white; }
+        .category-food { background: #34C759; color: white; }
+        .category-comedy { background: #FF9500; color: white; }
+        .category-free { background: #FFCC00; color: black; }
+
+        .event-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1d1d1f;
+            letter-spacing: -0.3px;
+        }
+
+        .event-details {
+            color: #86868b;
+            font-size: 15px;
+            line-height: 1.4;
+            margin-bottom: 12px;
+        }
+
+        .event-price {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .price-paid { background: #FF3B30; color: white; }
+        .price-free { background: #34C759; color: white; }
+        .price-varies { background: #FF9500; color: white; }
+
+        /* Apple-style Sidebar */
+        .sidebar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 320px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            z-index: 2500;
+            padding: 104px 0 0 0;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-content {
+            padding: 20px;
+        }
+
+        .sidebar h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0 0 20px 0;
+            color: #1d1d1f;
+        }
+
+        .sidebar-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-btn {
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: none;
+            background: rgba(0, 0, 0, 0.05);
+            color: #1d1d1f;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-btn:hover {
+            background: rgba(0, 122, 255, 0.1);
+        }
+
+        .sidebar-btn.active {
+            background: #007AFF;
+            color: #ffffff;
+        }
+
+        .sidebar-btn .count {
+            background: rgba(0, 0, 0, 0.1);
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .sidebar-btn.active .count {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Animations */
+        @keyframes appleFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .fade-in {
+            animation: appleFadeIn 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Apple-style Status Bar -->
+        <div class="status-bar">
+            <div>9:41</div>
+            <div class="battery">
+                <div class="battery-icon">
+                    <div class="battery-fill"></div>
+                </div>
+                <div class="wifi-icon"></div>
+            </div>
+        </div>
+
+        <!-- Apple-style Navigation -->
+        <div class="nav-bar">
+            <div class="nav-left">
+                <button class="menu-button" onclick="toggleSidebar()">
+                    <div class="menu-line"></div>
+                </button>
+                <h1 class="app-title">PulseNYC</h1>
+            </div>
+            <div class="nav-right">
+                <div class="event-count">5 events</div>
+            </div>
+        </div>
+
+        <!-- Apple-style Category Filter -->
+        <div class="category-filter">
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="filterEvents('all')">
+                    <span class="emoji">🌟</span>
+                    <span class="label">All Events</span>
+                    <span class="count">5</span>
+                </button>
+                <button class="filter-btn" onclick="filterEvents('music')">
+                    <span class="emoji">🎵</span>
+                    <span class="label">Music</span>
+                    <span class="count">1</span>
+                </button>
+                <button class="filter-btn" onclick="filterEvents('art')">
+                    <span class="emoji">🎨</span>
+                    <span class="label">Art</span>
+                    <span class="count">1</span>
+                </button>
+                <button class="filter-btn" onclick="filterEvents('food')">
+                    <span class="emoji">🍽️</span>
+                    <span class="label">Food & Drink</span>
+                    <span class="count">1</span>
+                </button>
+                <button class="filter-btn" onclick="filterEvents('comedy')">
+                    <span class="emoji">😂</span>
+                    <span class="label">Comedy</span>
+                    <span class="count">1</span>
+                </button>
+                <button class="filter-btn" onclick="filterEvents('free')">
+                    <span class="emoji">🆓</span>
+                    <span class="label">Free</span>
+                    <span class="count">1</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Apple-style Map Area -->
+        <div class="map-area">
+            <div class="map-placeholder">
+                <div class="map-icon">🗺️</div>
+                <h2>Interactive Map</h2>
+                <p>Click on event markers to see details</p>
+            </div>
+        </div>
+
+        <!-- Apple-style Event Cards -->
+        <div class="event-cards">
+            <div class="event-card fade-in">
+                <div class="event-category category-music">
+                    🎵 Music
+                </div>
+                <div class="event-title">Jazz Night at Blue Note</div>
+                <div class="event-details">
+                    <strong>📍</strong> 131 W 3rd St, New York, NY 10012<br>
+                    <strong>🕐</strong> 8:00 PM<br>
+                    <strong>📝</strong> An evening of smooth jazz featuring local artists
+                </div>
+                <div class="event-price price-paid">$25</div>
+            </div>
+
+            <div class="event-card fade-in">
+                <div class="event-category category-art">
+                    🎨 Art
+                </div>
+                <div class="event-title">Art Gallery Opening</div>
+                <div class="event-details">
+                    <strong>📍</strong> 123 Spring St, New York, NY 10012<br>
+                    <strong>🕐</strong> 6:00 PM<br>
+                    <strong>📝</strong> Contemporary art exhibition opening reception
+                </div>
+                <div class="event-price price-free">Free</div>
+            </div>
+
+            <div class="event-card fade-in">
+                <div class="event-category category-food">
+                    🍽️ Food & Drink
+                </div>
+                <div class="event-title">Food Truck Festival</div>
+                <div class="event-details">
+                    <strong>📍</strong> Union Square, New York, NY 10003<br>
+                    <strong>🕐</strong> 12:00 PM<br>
+                    <strong>📝</strong> Local food trucks serving diverse cuisines
+                </div>
+                <div class="event-price price-varies">Varies</div>
+            </div>
+        </div>
+
+        <!-- Apple-style Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-content">
+                <h3>Event Categories</h3>
+                <div class="sidebar-buttons">
+                    <button class="sidebar-btn active" onclick="selectCategory('all')">
+                        <span>All Events</span>
+                        <span class="count">5</span>
+                    </button>
+                    <button class="sidebar-btn" onclick="selectCategory('music')">
+                        <span>Music</span>
+                        <span class="count">1</span>
+                    </button>
+                    <button class="sidebar-btn" onclick="selectCategory('art')">
+                        <span>Art</span>
+                        <span class="count">1</span>
+                    </button>
+                    <button class="sidebar-btn" onclick="selectCategory('food')">
+                        <span>Food & Drink</span>
+                        <span class="count">1</span>
+                    </button>
+                    <button class="sidebar-btn" onclick="selectCategory('comedy')">
+                        <span>Comedy</span>
+                        <span class="count">1</span>
+                    </button>
+                    <button class="sidebar-btn" onclick="selectCategory('free')">
+                        <span>Free</span>
+                        <span class="count">1</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+
+        function filterEvents(category) {
+            // Update filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update event count
+            const count = category === 'all' ? 5 : 1;
+            event.target.querySelector('.count').textContent = count;
+        }
+
+        function selectCategory(category) {
+            // Update sidebar buttons
+            document.querySelectorAll('.sidebar-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Close sidebar
+            document.getElementById('sidebar').classList.remove('open');
+        }
+
+        // Add some interactive effects
+        document.querySelectorAll('.event-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-4px) scale(1.02)';
+            });
+
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        // Simulate loading animation
+        setTimeout(() => {
+            document.querySelectorAll('.fade-in').forEach((element, index) => {
+                setTimeout(() => {
+                    element.style.opacity = '1';
+                    element.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        }, 500);
+    </script>
+</body>
+</html>

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NYC 3D Map - React Style</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/framer-motion@10.16.16/dist/framer-motion.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        
+        .marker {
+            background-color: #007AFF;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 3px solid white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .marker:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        
+        .event-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .event-card:hover {
+            transform: translateY(-5px) scale(1.02);
+        }
+        
+        .category-badge {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            padding: 10px 16px;
+            border-radius: 24px;
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+            backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+            letter-spacing: 0.8px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .event-card:hover .category-badge {
+            background: rgba(0, 122, 255, 0.9);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 8px 20px rgba(0, 122, 255, 0.4);
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Event data
+        const events = [
+            {
+                id: 'event-1',
+                name: 'Jazz Night at Blue Note',
+                category: 'music',
+                lat: 40.7306,
+                lng: -74.0023,
+                address: '131 W 3rd St, New York, NY 10012',
+                time: '8:00 PM',
+                price: '$25',
+                description: 'An evening of smooth jazz featuring local artists in the heart of Greenwich Village. Enjoy a night of soulful melodies and vibrant performances.'
+            },
+            {
+                id: 'event-2',
+                name: 'Modern Art Exhibition',
+                category: 'art',
+                lat: 40.7614,
+                lng: -73.9776,
+                address: '11 W 53rd St, New York, NY 10019',
+                time: '10:00 AM',
+                price: '$18',
+                description: 'Contemporary art showcase featuring emerging artists and established masters. Explore innovative works across various mediums and styles.'
+            },
+            {
+                id: 'event-3',
+                name: 'Food Truck Festival',
+                category: 'food',
+                lat: 40.7589,
+                lng: -73.9851,
+                address: 'Central Park, New York, NY 10019',
+                time: '12:00 PM',
+                price: 'Free',
+                description: 'A culinary adventure featuring the best food trucks from across the city. Sample diverse cuisines and discover new flavors.'
+            },
+            {
+                id: 'event-4',
+                name: 'Comedy Show at The Comedy Cellar',
+                category: 'comedy',
+                lat: 40.7306,
+                lng: -74.0023,
+                address: '117 MacDougal St, New York, NY 10012',
+                time: '9:30 PM',
+                price: '$15',
+                description: 'Laugh the night away with top comedians in an intimate setting. A perfect evening for comedy lovers and first-time visitors.'
+            },
+            {
+                id: 'event-5',
+                name: 'Free Yoga in the Park',
+                category: 'free',
+                lat: 40.7829,
+                lng: -73.9654,
+                address: 'Central Park, New York, NY 10024',
+                time: '7:00 AM',
+                price: 'Free',
+                description: 'Start your day with peaceful yoga practice in the beautiful surroundings of Central Park. All levels welcome, mats provided.'
+            },
+            {
+                id: 'event-6',
+                name: 'Brooklyn Bridge Walking Tour',
+                category: 'other',
+                lat: 40.7061,
+                lng: -73.9969,
+                address: 'Brooklyn Bridge, New York, NY 10038',
+                time: '2:00 PM',
+                price: '$20',
+                description: 'Discover the history and architecture of this iconic landmark. Learn fascinating stories and enjoy stunning city views.'
+            }
+        ];
+
+        // Utility functions
+        const getCategoryColor = (category) => {
+            const colors = {
+                'music': '#FF6B6B',
+                'art': '#4ECDC4',
+                'food': '#45B7D1',
+                'comedy': '#96CEB4',
+                'free': '#FFEAA7',
+                'other': '#DDA0DD'
+            };
+            return colors[category.toLowerCase()] || '#DDA0DD';
+        };
+
+        const getCategoryEmoji = (category) => {
+            const emojis = {
+                'music': '🎵',
+                'art': '🎨',
+                'food': '🍽️',
+                'comedy': '😂',
+                'free': '🆓',
+                'other': '📍'
+            };
+            return emojis[category.toLowerCase()] || '📍';
+        };
+
+        const capitalizeCategory = (category) => {
+            return category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+        };
+
+        const generateEventImage = (event) => {
+            const categoryImages = {
+                'music': [
+                    '1551632811-561732d1e306?q=80&w=400&auto=format&fit=crop',
+                    '1493225457124-3fdc8c7c4e8c?q=80&w=400&auto=format&fit=crop',
+                    '1511671782779-c97d3d27a5d4?q=80&w=400&auto=format&fit=crop'
+                ],
+                'art': [
+                    '1541961014-2dca997ad595?q=80&w=400&auto=format&fit=crop',
+                    '1578662996442-48f60103fc96?q=80&w=400&auto=format&fit=crop',
+                    '1571019613454-1cb2f99b2d8b?q=80&w=400&auto=format&fit=crop'
+                ],
+                'food': [
+                    '1555939594-58d7cb561ad1?q=80&w=400&auto=format&fit=crop',
+                    '1556909112-2a2b4b4b4b4b?q=80&w=400&auto=format&fit=crop',
+                    '1565299624946-b28f40a0ca4b?q=80&w=400&auto=format&fit=crop'
+                ],
+                'comedy': [
+                    '1515187029135-18ee286d815b?q=80&w=400&auto=format&fit=crop',
+                    '1571019613454-1cb2f99b2d8b?q=80&w=400&auto=format&fit=crop',
+                    '1558618048-0e4c82c9d7f1?q=80&w=400&auto=format&fit=crop'
+                ],
+                'free': [
+                    '1441974231531-c6227db76b6e?q=80&w=400&auto=format&fit=crop',
+                    '1506905925346-21bda4d32df4?q=80&w=400&auto=format&fit=crop',
+                    '1571019613454-1cb2f99b2d8b?q=80&w=400&auto=format&fit=crop'
+                ],
+                'other': [
+                    '1506905925346-21bda4d32df4?q=80&w=400&auto=format&fit=crop',
+                    '1551632811-561732d1e306?q=80&w=400&auto=format&fit=crop',
+                    '1441974231531-c6227db76b6e?q=80&w=400&auto=format&fit=crop'
+                ]
+            };
+
+            const images = categoryImages[event.category.toLowerCase()] || categoryImages['other'];
+            const eventIndex = parseInt(event.id.replace(/\D/g, '')) || 0;
+            const imageIndex = eventIndex % images.length;
+            return `https://images.unsplash.com/photo/${images[imageIndex]}`;
+        };
+
+        const generateMapImage = (event) => {
+            const mapboxToken = 'pk.eyJ1IjoiZGV2a3VtYXIxMjMiLCJhIjoiY21nMXZpdTE1MHQwejJub2ZudWd3ZGZ0ZSJ9.Ed8Xd2_5aBZzthiEhdXZgA';
+            return `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s-marker+ff0000(${event.lng},${event.lat})/${event.lng},${event.lat},14,0/200x100@2x?access_token=${mapboxToken}`;
+        };
+
+        // NYC3DMap Component
+        const NYC3DMap = ({ events, onEventSelect }) => {
+            const mapContainer = useRef(null);
+            const map = useRef(null);
+            const markers = useRef([]);
+            const [lightPreset, setLightPreset] = useState('day');
+            const [showPlaceLabels, setShowPlaceLabels] = useState(true);
+            const [showPOILabels, setShowPOILabels] = useState(true);
+            const [showRoadLabels, setShowRoadLabels] = useState(true);
+            const [showTransitLabels, setShowTransitLabels] = useState(true);
+
+            const mapboxToken = 'pk.eyJ1IjoiZGV2a3VtYXIxMjMiLCJhIjoiY21nMXZpdTE1MHQwejJub2ZudWd3ZGZ0ZSJ9.Ed8Xd2_5aBZzthiEhdXZgA';
+
+            const createMarker = (event) => {
+                const color = getCategoryColor(event.category);
+                const emoji = getCategoryEmoji(event.category);
+                
+                const el = document.createElement('div');
+                el.className = 'marker';
+                el.style.backgroundColor = color;
+                el.textContent = emoji;
+                
+                const marker = new mapboxgl.Marker(el)
+                    .setLngLat([event.lng, event.lat])
+                    .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(createPopupContent(event)));
+                
+                el.addEventListener('click', () => {
+                    if (onEventSelect) {
+                        onEventSelect(event);
+                    }
+                });
+                
+                return marker;
+            };
+
+            const createPopupContent = (event) => {
+                const color = getCategoryColor(event.category);
+                const emoji = getCategoryEmoji(event.category);
+                const capitalizedCategory = capitalizeCategory(event.category);
+                
+                return `
+                    <div style="
+                        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+                        color: #1d1d1f;
+                        min-width: 250px;
+                        max-width: 300px;
+                    ">
+                        <div style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            margin-bottom: 12px;
+                        ">
+                            <div style="
+                                width: 40px;
+                                height: 40px;
+                                background: ${color};
+                                border-radius: 20px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-size: 20px;
+                                color: white;
+                            ">
+                                ${emoji}
+                            </div>
+                            <div>
+                                <h3 style="
+                                    margin: 0 0 4px 0;
+                                    font-size: 16px;
+                                    font-weight: 700;
+                                    color: #1d1d1f;
+                                ">
+                                    ${event.name}
+                                </h3>
+                                <div style="
+                                    background: ${color};
+                                    color: white;
+                                    padding: 4px 8px;
+                                    border-radius: 12px;
+                                    font-size: 10px;
+                                    font-weight: 600;
+                                    display: inline-block;
+                                ">
+                                    ${capitalizedCategory}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="
+                            margin: 0 0 8px 0;
+                            font-size: 13px;
+                            color: #86868b;
+                        ">
+                            🕐 ${event.time} • 💰 ${event.price}
+                        </div>
+                        
+                        <div style="
+                            margin: 0 0 8px 0;
+                            font-size: 13px;
+                            color: #86868b;
+                        ">
+                            📍 ${event.address}
+                        </div>
+                        
+                        <p style="
+                            margin: 0;
+                            font-size: 13px;
+                            color: #1d1d1f;
+                            line-height: 1.4;
+                        ">
+                            ${event.description}
+                        </p>
+                    </div>
+                `;
+            };
+
+            useEffect(() => {
+                if (map.current) return;
+
+                map.current = new mapboxgl.Map({
+                    container: mapContainer.current,
+                    style: 'mapbox://styles/mapbox/standard',
+                    center: [-73.935242, 40.730610],
+                    zoom: 10,
+                    pitch: 45,
+                    bearing: -17.6
+                });
+
+                map.current.on('style.load', () => {
+                    events.forEach(event => {
+                        const marker = createMarker(event);
+                        marker.addTo(map.current);
+                        markers.current.push(marker);
+                    });
+                });
+
+                return () => {
+                    if (map.current) {
+                        map.current.remove();
+                    }
+                };
+            }, []);
+
+            useEffect(() => {
+                if (map.current) {
+                    map.current.setConfigProperty('basemap', 'lightPreset', lightPreset);
+                }
+            }, [lightPreset]);
+
+            useEffect(() => {
+                if (map.current) {
+                    map.current.setConfigProperty('basemap', 'showPlaceLabels', showPlaceLabels);
+                }
+            }, [showPlaceLabels]);
+
+            useEffect(() => {
+                if (map.current) {
+                    map.current.setConfigProperty('basemap', 'showPointOfInterestLabels', showPOILabels);
+                }
+            }, [showPOILabels]);
+
+            useEffect(() => {
+                if (map.current) {
+                    map.current.setConfigProperty('basemap', 'showRoadLabels', showRoadLabels);
+                }
+            }, [showRoadLabels]);
+
+            useEffect(() => {
+                if (map.current) {
+                    map.current.setConfigProperty('basemap', 'showTransitLabels', showTransitLabels);
+                }
+            }, [showTransitLabels]);
+
+            return React.createElement('div', { className: 'relative w-full h-screen' },
+                React.createElement('div', { ref: mapContainer, className: 'w-full h-full' }),
+                React.createElement('div', { className: 'absolute top-4 left-4 z-10' },
+                    React.createElement('div', { className: 'bg-white/95 backdrop-blur-lg rounded-2xl p-4 shadow-lg border border-black/10' },
+                        React.createElement('div', { className: 'space-y-4' },
+                            React.createElement('div', null,
+                                React.createElement('label', { className: 'block text-sm font-bold text-gray-900 mb-2' }, 'Light Preset'),
+                                React.createElement('select', {
+                                    value: lightPreset,
+                                    onChange: (e) => setLightPreset(e.target.value),
+                                    className: 'w-full p-3 border border-gray-200 rounded-xl bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                },
+                                    React.createElement('option', { value: 'dawn' }, 'Dawn'),
+                                    React.createElement('option', { value: 'day' }, 'Day'),
+                                    React.createElement('option', { value: 'dusk' }, 'Dusk'),
+                                    React.createElement('option', { value: 'night' }, 'Night')
+                                )
+                            ),
+                            React.createElement('div', { className: 'space-y-2' },
+                                React.createElement('label', { className: 'flex items-center space-x-2 text-sm font-bold text-gray-900' },
+                                    React.createElement('input', {
+                                        type: 'checkbox',
+                                        checked: showPlaceLabels,
+                                        onChange: (e) => setShowPlaceLabels(e.target.checked),
+                                        className: 'w-4 h-4 text-blue-600 rounded focus:ring-blue-500'
+                                    }),
+                                    React.createElement('span', null, 'Show place labels')
+                                ),
+                                React.createElement('label', { className: 'flex items-center space-x-2 text-sm font-bold text-gray-900' },
+                                    React.createElement('input', {
+                                        type: 'checkbox',
+                                        checked: showPOILabels,
+                                        onChange: (e) => setShowPOILabels(e.target.checked),
+                                        className: 'w-4 h-4 text-blue-600 rounded focus:ring-blue-500'
+                                    }),
+                                    React.createElement('span', null, 'Show POI labels')
+                                ),
+                                React.createElement('label', { className: 'flex items-center space-x-2 text-sm font-bold text-gray-900' },
+                                    React.createElement('input', {
+                                        type: 'checkbox',
+                                        checked: showRoadLabels,
+                                        onChange: (e) => setShowRoadLabels(e.target.checked),
+                                        className: 'w-4 h-4 text-blue-600 rounded focus:ring-blue-500'
+                                    }),
+                                    React.createElement('span', null, 'Show road labels')
+                                ),
+                                React.createElement('label', { className: 'flex items-center space-x-2 text-sm font-bold text-gray-900' },
+                                    React.createElement('input', {
+                                        type: 'checkbox',
+                                        checked: showTransitLabels,
+                                        onChange: (e) => setShowTransitLabels(e.target.checked),
+                                        className: 'w-4 h-4 text-blue-600 rounded focus:ring-blue-500'
+                                    }),
+                                    React.createElement('span', null, 'Show transit labels')
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        // EventCard Component
+        const EventCard = ({ event, onDirectionsClick, onLearnMoreClick }) => {
+            const [eventImage, setEventImage] = useState('');
+            const [mapImage, setMapImage] = useState('');
+
+            useEffect(() => {
+                const img = generateEventImage(event);
+                const map = generateMapImage(event);
+                setEventImage(img);
+                setMapImage(map);
+            }, [event]);
+
+            const handleImageError = () => {
+                setEventImage('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=400&auto=format&fit=crop');
+            };
+
+            return React.createElement('div', {
+                className: 'w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-lg border border-gray-100 event-card'
+            },
+                React.createElement('div', { className: 'relative h-60 w-full' },
+                    React.createElement('img', {
+                        src: eventImage,
+                        alt: event.name,
+                        className: 'h-full w-full object-cover',
+                        onError: handleImageError
+                    }),
+                    React.createElement('div', { className: 'absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent' }),
+                    React.createElement('div', { className: 'category-badge' },
+                        React.createElement('span', null, getCategoryEmoji(event.category)),
+                        React.createElement('span', null, capitalizeCategory(event.category))
+                    ),
+                    React.createElement('div', { className: 'absolute bottom-0 left-0 flex w-full items-end justify-between p-4' },
+                        React.createElement('div', { className: 'text-white' },
+                            React.createElement('h3', { className: 'text-xl font-bold mb-1' }, event.name),
+                            React.createElement('p', { className: 'text-sm text-white/90 flex items-center gap-1' },
+                                '📍 ', event.address
+                            )
+                        ),
+                        React.createElement('button', {
+                            onClick: () => onDirectionsClick?.(event),
+                            className: 'px-3 py-2 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold rounded-lg hover:bg-white/30 transition-colors'
+                        }, '📍 Directions')
+                    )
+                ),
+                React.createElement('div', { className: 'p-5' },
+                    React.createElement('div', { className: 'flex items-center justify-between mb-4' },
+                        React.createElement('div', null,
+                            React.createElement('p', { className: 'font-bold text-gray-900' }, event.time),
+                            React.createElement('p', { className: 'text-xs text-gray-500' }, event.price)
+                        ),
+                        React.createElement('img', {
+                            src: mapImage,
+                            alt: 'Event location map',
+                            className: 'h-10 w-20 object-cover rounded border'
+                        })
+                    ),
+                    React.createElement('div', { className: 'my-4 h-px w-full bg-gray-200' }),
+                    React.createElement('div', { className: 'flex justify-between mb-4' },
+                        React.createElement('div', { className: 'text-center flex-1' },
+                            React.createElement('div', { className: 'text-lg font-bold text-gray-900' }, event.price),
+                            React.createElement('div', { className: 'text-xs text-gray-500 uppercase tracking-wide' }, 'Price')
+                        ),
+                        React.createElement('div', { className: 'text-center flex-1' },
+                            React.createElement('div', { className: 'text-lg font-bold text-gray-900' }, event.time),
+                            React.createElement('div', { className: 'text-xs text-gray-500 uppercase tracking-wide' }, 'Time')
+                        ),
+                        React.createElement('div', { className: 'text-center flex-1' },
+                            React.createElement('div', { className: 'text-lg font-bold text-gray-900' }, capitalizeCategory(event.category)),
+                            React.createElement('div', { className: 'text-xs text-gray-500 uppercase tracking-wide' }, 'Category')
+                        )
+                    ),
+                    React.createElement('div', { className: 'mb-4' },
+                        React.createElement('p', { className: 'text-sm text-gray-600 line-clamp-2 leading-relaxed' }, event.description)
+                    ),
+                    React.createElement('button', {
+                        onClick: () => onLearnMoreClick?.(event),
+                        className: 'w-full px-4 py-2 border-2 border-blue-500 text-blue-500 rounded-xl font-semibold hover:bg-blue-500 hover:text-white transition-all duration-300'
+                    }, 'Learn More →')
+                )
+            );
+        };
+
+        // EventsPanel Component
+        const EventsPanel = ({ events, onEventSelect, onDirectionsClick, onLearnMoreClick }) => {
+            const handleDirectionsClick = (event) => {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.address)}`;
+                window.open(url, '_blank');
+                onDirectionsClick?.(event);
+            };
+
+            const handleLearnMoreClick = (event) => {
+                console.log('Learn more about:', event.name);
+                onLearnMoreClick?.(event);
+            };
+
+            return React.createElement('div', { className: 'fixed top-0 right-0 w-96 h-screen bg-white/95 backdrop-blur-lg shadow-2xl border-l border-gray-200 overflow-y-auto z-20' },
+                React.createElement('div', { className: 'p-6' },
+                    React.createElement('h2', { className: 'text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2' },
+                        '🎯 NYC Events'
+                    ),
+                    React.createElement('div', { className: 'space-y-6' },
+                        events.map((event) =>
+                            React.createElement('div', {
+                                key: event.id,
+                                onClick: () => onEventSelect?.(event),
+                                className: 'cursor-pointer'
+                            },
+                                React.createElement(EventCard, {
+                                    event: event,
+                                    onDirectionsClick: handleDirectionsClick,
+                                    onLearnMoreClick: handleLearnMoreClick
+                                })
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        // Main App Component
+        const App = () => {
+            const [selectedEvent, setSelectedEvent] = useState(null);
+
+            const handleEventSelect = (event) => {
+                setSelectedEvent(event);
+            };
+
+            const handleDirectionsClick = (event) => {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.address)}`;
+                window.open(url, '_blank');
+            };
+
+            const handleLearnMoreClick = (event) => {
+                console.log('Learn more about:', event.name);
+            };
+
+            return React.createElement('div', { className: 'relative w-full h-screen overflow-hidden' },
+                React.createElement(NYC3DMap, {
+                    events: events,
+                    onEventSelect: handleEventSelect
+                }),
+                React.createElement(EventsPanel, {
+                    events: events,
+                    onEventSelect: handleEventSelect,
+                    onDirectionsClick: handleDirectionsClick,
+                    onLearnMoreClick: handleLearnMoreClick
+                })
+            );
+        };
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>

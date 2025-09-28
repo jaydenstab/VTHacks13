@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseNYC - Advanced AI-Powered Event Discovery</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #1d1d1f;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100vw;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Apple-style Status Bar */
+        .status-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 2000;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        .battery {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .battery-icon {
+            width: 17px;
+            height: 10px;
+            border: 1px solid #1d1d1f;
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .battery-fill {
+            width: 13px;
+            height: 6px;
+            background: #1d1d1f;
+            border-radius: 1px;
+            margin: 1px;
+        }
+
+        .wifi-icon {
+            width: 24px;
+            height: 11px;
+            border: 1px solid #1d1d1f;
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .wifi-icon::after {
+            content: '';
+            position: absolute;
+            right: 1px;
+            top: 1px;
+            width: 1px;
+            height: 3px;
+            background: #1d1d1f;
+            border-radius: 0 1px 1px 0;
+        }
+
+        /* Navigation */
+        .nav-bar {
+            position: fixed;
+            top: 44px;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 2000;
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .menu-button {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .menu-button:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .menu-line {
+            width: 16px;
+            height: 2px;
+            background: #1d1d1f;
+            border-radius: 1px;
+        }
+
+        .app-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1d1d1f;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-button.active {
+            background: #007AFF;
+            color: #ffffff;
+        }
+
+        .nav-button:not(.active) {
+            background: rgba(0, 0, 0, 0.05);
+            color: #1d1d1f;
+        }
+
+        .nav-button:hover:not(.active) {
+            background: rgba(0, 122, 255, 0.1);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-top: 104px;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            min-height: calc(100vh - 104px);
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Feature Cards */
+        .feature-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 24px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .feature-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1d1d1f;
+            letter-spacing: -0.3px;
+        }
+
+        .feature-description {
+            font-size: 16px;
+            color: #86868b;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .feature-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 12px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            font-size: 14px;
+            color: #1d1d1f;
+        }
+
+        .feature-list li::before {
+            content: '✓';
+            width: 20px;
+            height: 20px;
+            background: #34C759;
+            color: #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* AI Insights */
+        .ai-insights {
+            background: linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%);
+            color: #ffffff;
+        }
+
+        .ai-insights .feature-icon {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .ai-insights .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .ai-insights .feature-list li::before {
+            background: rgba(255, 255, 255, 0.3);
+            color: #007AFF;
+        }
+
+        /* Real-time Analytics */
+        .analytics {
+            background: linear-gradient(135deg, #34C759 0%, #30D158 100%);
+            color: #ffffff;
+        }
+
+        .analytics .feature-icon {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .analytics .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .analytics .feature-list li::before {
+            background: rgba(255, 255, 255, 0.3);
+            color: #34C759;
+        }
+
+        /* Machine Learning */
+        .ml {
+            background: linear-gradient(135deg, #AF52DE 0%, #BF5AF2 100%);
+            color: #ffffff;
+        }
+
+        .ml .feature-icon {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .ml .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .ml .feature-list li::before {
+            background: rgba(255, 255, 255, 0.3);
+            color: #AF52DE;
+        }
+
+        /* Notifications */
+        .notifications {
+            background: linear-gradient(135deg, #FF9500 0%, #FF9F0A 100%);
+            color: #ffffff;
+        }
+
+        .notifications .feature-icon {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .notifications .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .notifications .feature-list li::before {
+            background: rgba(255, 255, 255, 0.3);
+            color: #FF9500;
+        }
+
+        /* Performance */
+        .performance {
+            background: linear-gradient(135deg, #FF3B30 0%, #FF453A 100%);
+            color: #ffffff;
+        }
+
+        .performance .feature-icon {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .performance .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .performance .feature-list li::before {
+            background: rgba(255, 255, 255, 0.3);
+            color: #FF3B30;
+        }
+
+        /* Interactive Map */
+        .map-preview {
+            background: linear-gradient(135deg, #1d1d1f 0%, #2c2c2e 100%);
+            color: #ffffff;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-preview::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .map-content {
+            text-align: center;
+            z-index: 1;
+            position: relative;
+        }
+
+        .map-icon {
+            width: 80px;
+            height: 80px;
+            background: #007AFF;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 36px;
+            color: white;
+            box-shadow: 0 8px 30px rgba(0, 122, 255, 0.3);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                padding: 10px;
+            }
+            
+            .right-panel {
+                order: -1;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .feature-card {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .feature-card:nth-child(1) { animation-delay: 0.1s; }
+        .feature-card:nth-child(2) { animation-delay: 0.2s; }
+        .feature-card:nth-child(3) { animation-delay: 0.3s; }
+        .feature-card:nth-child(4) { animation-delay: 0.4s; }
+        .feature-card:nth-child(5) { animation-delay: 0.5s; }
+        .feature-card:nth-child(6) { animation-delay: 0.6s; }
+
+        /* Live indicators */
+        .live-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #34C759;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            margin-right: 6px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Apple-style Status Bar -->
+        <div class="status-bar">
+            <div style="font-size: 16px; font-weight: 700; letter-spacing: -0.3px;">PulseNYC</div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav-bar">
+            <div class="nav-left">
+                <button class="menu-button">
+                    <div class="menu-line"></div>
+                </button>
+                <div style="font-size: 16px; font-weight: 500; color: #86868b; letter-spacing: -0.2px;">
+                    Discover NYC Events
+                </div>
+            </div>
+            <div class="nav-right">
+                <button class="nav-button active">
+                    <span>🤖</span>
+                    <span>AI Insights</span>
+                </button>
+                <button class="nav-button">
+                    <span>📊</span>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-button">
+                    <span>🗺️</span>
+                    <span>Map</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="left-panel">
+                <!-- AI Insights Card -->
+                <div class="feature-card ai-insights">
+                    <div class="feature-header">
+                        <div class="feature-icon">🤖</div>
+                        <h2 class="feature-title">AI-Powered Insights</h2>
+                    </div>
+                    <p class="feature-description">
+                        Advanced machine learning algorithms analyze event patterns, user behavior, and trends to provide intelligent recommendations and insights.
+                    </p>
+                    <div class="feature-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">92%</div>
+                            <div class="stat-label">Accuracy</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">1.2K</div>
+                            <div class="stat-label">Insights</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">15ms</div>
+                            <div class="stat-label">Response</div>
+                        </div>
+                    </div>
+                    <ul class="feature-list">
+                        <li>Real-time trend analysis</li>
+                        <li>Personalized recommendations</li>
+                        <li>Predictive event forecasting</li>
+                        <li>Smart category classification</li>
+                        <li>Sentiment analysis</li>
+                        <li>Pattern recognition</li>
+                    </ul>
+                </div>
+
+                <!-- Real-time Analytics Card -->
+                <div class="feature-card analytics">
+                    <div class="feature-header">
+                        <div class="feature-icon">📊</div>
+                        <h2 class="feature-title">Real-Time Analytics</h2>
+                    </div>
+                    <p class="feature-description">
+                        Live dashboard with comprehensive metrics, user behavior tracking, and performance monitoring for data-driven decisions.
+                    </p>
+                    <div class="feature-stats">
+                        <div class="stat-item">
+                            <div class="stat-value"><span class="live-indicator"></span>1.2K</div>
+                            <div class="stat-label">Active Users</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">99.9%</div>
+                            <div class="stat-label">Uptime</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">145ms</div>
+                            <div class="stat-label">Response Time</div>
+                        </div>
+                    </div>
+                    <ul class="feature-list">
+                        <li>Live user activity tracking</li>
+                        <li>Event popularity metrics</li>
+                        <li>Geographic heat maps</li>
+                        <li>Performance monitoring</li>
+                        <li>Real-time notifications</li>
+                        <li>Custom analytics dashboards</li>
+                    </ul>
+                </div>
+
+                <!-- Machine Learning Card -->
+                <div class="feature-card ml">
+                    <div class="feature-header">
+                        <div class="feature-icon">🧠</div>
+                        <h2 class="feature-title">Machine Learning Engine</h2>
+                    </div>
+                    <p class="feature-description">
+                        Sophisticated ML models for collaborative filtering, content-based recommendations, and hybrid recommendation systems.
+                    </p>
+                    <div class="feature-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">3</div>
+                            <div class="stat-label">ML Models</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">87%</div>
+                            <div class="stat-label">Precision</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">2.1K</div>
+                            <div class="stat-label">Features</div>
+                        </div>
+                    </div>
+                    <ul class="feature-list">
+                        <li>Collaborative filtering</li>
+                        <li>Content-based filtering</li>
+                        <li>Hybrid recommendation system</li>
+                        <li>Deep learning models</li>
+                        <li>Feature engineering</li>
+                        <li>Model training pipeline</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <!-- Interactive Map Preview -->
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">🗺️</div>
+                        <h2 class="feature-title">Interactive Map</h2>
+                    </div>
+                    <div class="map-preview">
+                        <div class="map-content">
+                            <div class="map-icon">🗺️</div>
+                            <h3 style="margin-bottom: 8px;">Live Event Map</h3>
+                            <p style="opacity: 0.8;">Click on markers to explore events</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Smart Notifications Card -->
+                <div class="feature-card notifications">
+                    <div class="feature-header">
+                        <div class="feature-icon">🔔</div>
+                        <h2 class="feature-title">Smart Notifications</h2>
+                    </div>
+                    <p class="feature-description">
+                        AI-powered notification system with real-time alerts, personalized recommendations, and intelligent timing.
+                    </p>
+                    <div class="feature-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">2.4K</div>
+                            <div class="stat-label">Sent Today</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">94%</div>
+                            <div class="stat-label">Delivery Rate</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">67%</div>
+                            <div class="stat-label">Click Rate</div>
+                        </div>
+                    </div>
+                    <ul class="feature-list">
+                        <li>Real-time event alerts</li>
+                        <li>Proximity notifications</li>
+                        <li>Price drop alerts</li>
+                        <li>Weather-based warnings</li>
+                        <li>Personalized timing</li>
+                        <li>Smart categorization</li>
+                    </ul>
+                </div>
+
+                <!-- Performance Card -->
+                <div class="feature-card performance">
+                    <div class="feature-header">
+                        <div class="feature-icon">⚡</div>
+                        <h2 class="feature-title">High Performance</h2>
+                    </div>
+                    <p class="feature-description">
+                        Optimized for speed and scalability with advanced caching, real-time processing, and efficient data structures.
+                    </p>
+                    <div class="feature-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">99.9%</div>
+                            <div class="stat-label">Uptime</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">145ms</div>
+                            <div class="stat-label">Avg Response</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">10K</div>
+                            <div class="stat-label">RPS</div>
+                        </div>
+                    </div>
+                    <ul class="feature-list">
+                        <li>WebSocket real-time updates</li>
+                        <li>Redis caching layer</li>
+                        <li>CDN optimization</li>
+                        <li>Database indexing</li>
+                        <li>Load balancing</li>
+                        <li>Auto-scaling</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add interactive functionality
+        document.querySelectorAll('.nav-button').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Simulate real-time updates
+        setInterval(() => {
+            const liveIndicators = document.querySelectorAll('.live-indicator');
+            liveIndicators.forEach(indicator => {
+                indicator.style.animation = 'none';
+                setTimeout(() => {
+                    indicator.style.animation = 'pulse 2s infinite';
+                }, 10);
+            });
+        }, 5000);
+
+        // Add hover effects
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-8px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+    </script>
+</body>
+</html>
