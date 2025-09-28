@@ -29,6 +29,7 @@ const NYC3DMap: React.FC<NYC3DMapProps> = ({ events, onEventSelect }) => {
   const [showRoadLabels, setShowRoadLabels] = useState(true);
   const [showTransitLabels, setShowTransitLabels] = useState(true);
 
+  // Use the same Mapbox token from the original HTML file
   const mapboxToken = 'pk.eyJ1IjoiZGV2a3VtYXIxMjMiLCJhIjoiY21nMXZpdTE1MHQwejJub2ZudWd3ZGZ0ZSJ9.Ed8Xd2_5aBZzthiEhdXZgA';
 
   const getCategoryColor = (category: string): string => {
@@ -175,23 +176,38 @@ const NYC3DMap: React.FC<NYC3DMapProps> = ({ events, onEventSelect }) => {
   useEffect(() => {
     if (map.current) return;
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current!,
-      style: 'mapbox://styles/mapbox/standard',
-      center: [-73.935242, 40.730610],
-      zoom: 10,
-      pitch: 45,
-      bearing: -17.6
-    });
-
-    map.current.on('style.load', () => {
-      // Add markers for events
-      events.forEach(event => {
-        const marker = createMarker(event);
-        marker.addTo(map.current!);
-        markers.current.push(marker);
+    try {
+      console.log('Initializing Mapbox map...');
+      
+      // Set the Mapbox access token
+      mapboxgl.accessToken = mapboxToken;
+      
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current!,
+        style: 'mapbox://styles/mapbox/standard',
+        center: [-73.935242, 40.730610],
+        zoom: 10,
+        pitch: 45,
+        bearing: -17.6
       });
-    });
+
+      map.current.on('load', () => {
+        console.log('Map loaded successfully');
+        // Add markers for events
+        events.forEach(event => {
+          const marker = createMarker(event);
+          marker.addTo(map.current!);
+          markers.current.push(marker);
+        });
+      });
+
+      map.current.on('error', (e) => {
+        console.error('Mapbox error:', e);
+      });
+
+    } catch (error) {
+      console.error('Error initializing map:', error);
+    }
 
     return () => {
       if (map.current) {

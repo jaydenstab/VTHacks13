@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { scrapeTheSkint } = require('./scraper');
+const { scrapeNYCEvents } = require('./scraper');
 const { extractEventData } = require('./aiProcessor');
 const { geocodeAddress } = require('./geocoder');
 
@@ -24,9 +24,9 @@ app.get('/api/events', async (req, res) => {
   try {
     console.log('Starting event scraping and processing...');
     
-    // Step 1: Scrape raw data from The Skint
-    const rawEventTexts = await scrapeTheSkint();
-    console.log(`Scraped ${rawEventTexts.length} raw event texts`);
+    // Step 1: Scrape raw data from multiple NYC event sources
+    const rawEventTexts = await scrapeNYCEvents();
+    console.log(`Scraped ${rawEventTexts.length} raw event texts from multiple sources`);
     
     // Step 2: Process each event with AI
     const processedEvents = [];
@@ -68,46 +68,6 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
-// Fallback endpoint with dummy data for testing
-app.get('/api/events/dummy', (req, res) => {
-  const dummyEvents = [
-    {
-      id: 'dummy_1',
-      name: 'Jazz Night at Blue Note',
-      description: 'An evening of smooth jazz featuring local artists',
-      address: '131 W 3rd St, New York, NY 10012',
-      startTime: '8:00 PM',
-      price: '$25',
-      category: 'Music',
-      latitude: 40.7306,
-      longitude: -74.0023
-    },
-    {
-      id: 'dummy_2',
-      name: 'Art Gallery Opening',
-      description: 'Contemporary art exhibition opening reception',
-      address: '123 Spring St, New York, NY 10012',
-      startTime: '6:00 PM',
-      price: 'Free',
-      category: 'Art',
-      latitude: 40.7256,
-      longitude: -73.9943
-    },
-    {
-      id: 'dummy_3',
-      name: 'Food Truck Festival',
-      description: 'Local food trucks serving diverse cuisines',
-      address: 'Union Square, New York, NY 10003',
-      startTime: '12:00 PM',
-      price: 'Varies',
-      category: 'Food & Drink',
-      latitude: 40.7356,
-      longitude: -73.9906
-    }
-  ];
-  
-  res.json(dummyEvents);
-});
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .event-card {
+            background: rgba(255, 255, 255, 0.2);
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        .error {
+            background: rgba(255, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗽 NYC Events Test</h1>
+        <p>Testing the full application stack...</p>
+        
+        <button onclick="testAPI()">Test API Connection</button>
+        <button onclick="testMap()">Test Map Integration</button>
+        
+        <div id="status"></div>
+        <div id="events"></div>
+    </div>
+
+    <script>
+        async function testAPI() {
+            const statusDiv = document.getElementById('status');
+            const eventsDiv = document.getElementById('events');
+            
+            statusDiv.innerHTML = '<div class="loading">🔄 Testing API connection...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/events');
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Data received:', data);
+                
+                statusDiv.innerHTML = `<div style="background: rgba(0, 255, 0, 0.2); padding: 15px; border-radius: 10px; margin: 10px 0;">
+                    ✅ API Working! Got ${data.length} events
+                </div>`;
+                
+                eventsDiv.innerHTML = `
+                    <h3>📅 Events Found:</h3>
+                    ${data.slice(0, 5).map(event => `
+                        <div class="event-card">
+                            <h4>${event.name}</h4>
+                            <p><strong>Category:</strong> ${event.category}</p>
+                            <p><strong>Address:</strong> ${event.address}</p>
+                            <p><strong>Coordinates:</strong> ${event.latitude}, ${event.longitude}</p>
+                            <p><strong>Time:</strong> ${event.startTime || 'TBD'}</p>
+                        </div>
+                    `).join('')}
+                `;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                statusDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        function testMap() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `
+                <div style="background: rgba(0, 150, 255, 0.2); padding: 15px; border-radius: 10px; margin: 10px 0;">
+                    🗺️ Map Test: <a href="http://localhost:3000" target="_blank" style="color: white;">Open React App</a>
+                </div>
+            `;
+        }
+        
+        // Auto-test on page load
+        window.onload = function() {
+            testAPI();
+        };
+    </script>
+</body>
+</html>

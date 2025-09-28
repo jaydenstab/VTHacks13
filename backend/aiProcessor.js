@@ -17,14 +17,32 @@ async function extractEventData(rawText) {
 
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-    const prompt = `You are an expert event data extractor for NYC. From the following text, extract the Event Name, Address, Start Time, and Price. Also, assign a single category from this list: ['Music', 'Art', 'Food & Drink', 'Comedy', 'Free', 'Other']. 
+    const prompt = `You are an expert event data extractor for NYC events. From the following text, extract structured event information.
 
-Return the output as a clean JSON object with keys: eventName, address, startTime, price, category, and description. If the price is free, the value for 'price' should be 'Free'. If any information is missing, use null.
+REQUIREMENTS:
+1. Extract Event Name, Address, Start Time, Date, Price, and Description
+2. Assign ONE category from: ['Music', 'Art', 'Food & Drink', 'Comedy', 'Free', 'Other']
+3. For addresses, ensure they include "New York, NY" or "NYC" if missing
+4. For prices, use "Free" if the event is free, otherwise use the exact price format (e.g., "$25", "$15-20")
+5. For times, use 12-hour format (e.g., "8:00 PM", "2:00 PM")
+6. For dates, use YYYY-MM-DD format. If no date is specified, use a future date within the next 30 days
+7. Create a brief description (1-2 sentences) if none provided
 
 Text to analyze:
 ${rawText}
 
-Please respond with only the JSON object, no additional text.`;
+Return ONLY a JSON object with these exact keys:
+{
+  "eventName": "string",
+  "address": "string", 
+  "startTime": "string",
+  "date": "string",
+  "price": "string",
+  "category": "string",
+  "description": "string"
+}
+
+No additional text or formatting.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -53,6 +71,7 @@ Please respond with only the JSON object, no additional text.`;
       eventName: eventData.eventName || 'Unknown Event',
       address: eventData.address || null,
       startTime: eventData.startTime || null,
+      date: eventData.date || null,
       price: eventData.price || 'Unknown',
       category: eventData.category || 'Other',
       description: eventData.description || 'No description available'
@@ -82,11 +101,72 @@ function extractEventDataFallback(rawText) {
   let category = 'Other';
   let description = rawText;
   
-  // Try to extract event name (usually the first substantial line)
-  for (const line of lines) {
-    if (line.length > 10 && line.length < 100 && !line.includes('$') && !line.includes('PM') && !line.includes('AM')) {
-      eventName = line;
-      break;
+  // Try to extract event name by looking for patterns in the text
+  // Look for text that appears to be an event title
+  const eventNamePatterns = [
+    // Look for text before "Check ticket"
+    /([^]+?)Check ticket/,
+    // Look for text before "Save this event"
+    /([^]+?)Save this event/,
+    // Look for text before "Share this event"
+    /([^]+?)Share this event/,
+    // Look for text that ends with common venue patterns
+    /([^]+?)(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s*•/,
+    // Look for text before time patterns
+    /([^•]+)•/,
+  ];
+  
+  for (const pattern of eventNamePatterns) {
+    const match = rawText.match(pattern);
+    if (match && match[1]) {
+      const candidate = match[1].trim();
+      if (candidate.length > 5 && candidate.length < 200 && 
+          !candidate.includes('Check ticket') &&
+          !candidate.includes('Save this event') &&
+          !candidate.includes('Share this event') &&
+          !candidate.includes('Almost full') &&
+          !candidate.includes('Going fast') &&
+          !candidate.includes('PM') &&
+          !candidate.includes('AM')) {
+        eventName = candidate;
+        break;
+      }
+    }
+  }
+  
+  // If still unknown, try to extract from the first line that looks like a title
+  if (eventName === 'Unknown Event') {
+    // Look for patterns like "Almost fullEvent Name" or "Going fastEvent Name"
+    const statusPatterns = [
+      /(?:Almost full|Going fast)([A-Za-z\s|&]+?)(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i,
+      /(?:Almost full|Going fast)([A-Za-z\s|&]+?)(?:PM|AM)/i,
+      /(?:Almost full|Going fast)([A-Za-z\s|&]+?)(?:Check|Save)/i
+    ];
+    
+    for (const pattern of statusPatterns) {
+      const match = rawText.match(pattern);
+      if (match && match[1]) {
+        const candidate = match[1].trim();
+        if (candidate.length > 5 && candidate.length < 200) {
+          eventName = candidate;
+          break;
+        }
+      }
+    }
+  }
+  
+  // If still unknown, try to extract from the first substantial line
+  if (eventName === 'Unknown Event') {
+    for (const line of lines) {
+      if (line.length > 10 && line.length < 200 && 
+          !line.includes('Check ticket') &&
+          !line.includes('Save this event') &&
+          !line.includes('Share this event') &&
+          !line.includes('Almost full') &&
+          !line.includes('Going fast')) {
+        eventName = line.substring(0, 100); // Limit length
+        break;
+      }
     }
   }
   
@@ -95,6 +175,34 @@ function extractEventDataFallback(rawText) {
   const addressMatch = rawText.match(addressPattern);
   if (addressMatch) {
     address = addressMatch[0];
+  } else {
+    // Look for venue names that appear before time patterns
+    const venuePatterns = [
+      // Look for venue names before "Check ticket" (no spaces)
+      /([A-Za-z]+(?:Steakhouse|Restaurant|Bar|Club|Theater|Theatre|Hall|Center|Centre|Park|Square|Refuge|DROM|Marriott))Check/i,
+      // Look for venue names before "Save this event" (no spaces)
+      /([A-Za-z]+(?:Steakhouse|Restaurant|Bar|Club|Theater|Theatre|Hall|Center|Centre|Park|Square|Refuge|DROM|Marriott))Save/i,
+      // Look for venue names before time patterns (no spaces)
+      /([A-Za-z]+(?:Steakhouse|Restaurant|Bar|Club|Theater|Theatre|Hall|Center|Centre|Park|Square|Refuge|DROM|Marriott))(?:PM|AM)/i,
+      // Look for venue names in general
+      /([A-Za-z]+(?:Steakhouse|Restaurant|Bar|Club|Theater|Theatre|Hall|Center|Centre|Park|Square|Refuge|DROM|Marriott))/i
+    ];
+    
+    for (const pattern of venuePatterns) {
+      const match = rawText.match(pattern);
+      if (match && match[1]) {
+        const venue = match[1].trim();
+        if (venue.length > 2 && venue.length < 50 && !venue.includes('PM') && !venue.includes('AM')) {
+          address = venue + ', New York, NY';
+          break;
+        }
+      }
+    }
+    
+    // If still no address found, use default NYC location
+    if (!address) {
+      address = 'New York, NY';
+    }
   }
   
   // Try to extract time (look for PM/AM patterns)

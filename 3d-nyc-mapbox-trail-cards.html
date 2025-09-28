@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PulseNYC - 3D Map with Trail-Style Event Cards</title>
     
     <!-- Mapbox GL CSS -->
@@ -21,11 +21,21 @@
             box-sizing: border-box;
         }
 
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #1a1a1a;
             color: #1d1d1f;
             overflow: hidden;
+            margin: 0;
+            padding: 0;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
@@ -35,18 +45,23 @@
             width: 100vw;
             height: 100vh;
             position: relative;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
         }
 
         #map {
-            position: absolute;
+            position: fixed;
             top: 0;
-            bottom: 0;
-            width: 100%;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
         }
 
         .map-overlay {
             font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
-            position: absolute;
+            position: fixed;
             width: 300px;
             top: 24px;
             left: 24px;
@@ -158,7 +173,7 @@
         }
 
         .events-panel {
-            position: absolute;
+            position: fixed;
             bottom: 24px;
             right: 24px;
             width: 420px;
@@ -591,8 +606,44 @@
         // Your Mapbox token
         mapboxgl.accessToken = 'pk.eyJ1IjoiZGV2a3VtYXIxMjMiLCJhIjoiY21nMXZpdTE1MHQwejJub2ZudWd3ZGZ0ZSJ9.Ed8Xd2_5aBZzthiEhdXZgA';
         
-        // NYC Events data (covering 40-mile radius including Long Island)
-        const events = [
+        // NYC Events data - will be loaded from API
+        let events = [];
+        
+        // Load events from API
+        async function loadEvents() {
+            try {
+                console.log('Loading events from API...');
+                const response = await fetch('http://localhost:8000/api/events/dummy');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                // Transform API data to match our format
+                events = data.map((event, index) => ({
+                    id: event.id || `event-${index + 1}`,
+                    name: event.name || 'Unknown Event',
+                    category: event.category?.toLowerCase() || 'other',
+                    lng: event.longitude || -74.0060,
+                    lat: event.latitude || 40.7128,
+                    address: event.address || 'New York, NY',
+                    time: event.startTime || 'TBD',
+                    date: event.date || '2024-01-15',
+                    price: event.price || 'Unknown',
+                    description: event.description || 'No description available'
+                }));
+                
+                console.log(`Loaded ${events.length} events:`, events.map(e => e.name));
+                
+                // Initialize map and populate with events
+                initMap();
+                addEventMarkers();
+                populateEventCards();
+                
+            } catch (error) {
+                console.error('Error loading events:', error);
+                // Fallback to hardcoded events
+                events = [
             {
                 id: 'jazz',
                 name: 'Jazz Night at Blue Note',
@@ -703,7 +754,14 @@
                 price: '$30',
                 description: 'Cocktails with stunning city views'
             }
-        ];
+                ];
+                
+                // Initialize map with fallback events
+                initMap();
+                addEventMarkers();
+                populateEventCards();
+            }
+        }
 
         let map;
         let markers = [];
@@ -713,6 +771,11 @@
             // Hide loading
             document.getElementById('loading').style.display = 'none';
 
+            // Ensure map container is properly sized
+            const mapContainer = document.getElementById('map');
+            mapContainer.style.width = '100vw';
+            mapContainer.style.height = '100vh';
+
             // Create map with NYC center and 40-mile coverage
             map = new mapboxgl.Map({
                 container: 'map',
@@ -720,8 +783,24 @@
                 zoom: 9, // Zoom level to show 40-mile radius including Long Island
                 pitch: 45, // 3D perspective
                 bearing: -17.6, // Slight rotation for better 3D view
-                style: 'mapbox://styles/mapbox/standard' // Using the new standard style
+                style: 'mapbox://styles/mapbox/standard', // Using the new standard style
+                antialias: true,
+                preserveDrawingBuffer: true
             });
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                if (map) {
+                    map.resize();
+                }
+            });
+
+            // Ensure map loads properly on all screen sizes
+            setTimeout(() => {
+                if (map) {
+                    map.resize();
+                }
+            }, 100);
 
             // Add event markers when map loads
             map.on('style.load', () => {
@@ -870,7 +949,7 @@
                         font-size: 13px;
                         color: #86868b;
                     ">
-                        🕐 ${event.time} • 💰 ${event.price}
+                        📅 ${formatDate(event.date)} • 🕐 ${event.time} • 💰 ${event.price}
                     </div>
                     
                     <div style="
@@ -1062,8 +1141,8 @@
                                 <div class="stat-label">Price</div>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-value">${event.time}</div>
-                                <div class="stat-label">Time</div>
+                                <div class="stat-value">${formatDate(event.date)}</div>
+                                <div class="stat-label">Date</div>
                             </div>
                             <div class="stat-item">
                                 <div class="stat-value">${capitalizedCategory}</div>
@@ -1142,8 +1221,22 @@
             return category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
         }
 
+        // Format date for display
+        function formatDate(dateString) {
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', { 
+                    weekday: 'short', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+            } catch (error) {
+                return dateString;
+            }
+        }
+
         // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', initMap);
+        document.addEventListener('DOMContentLoaded', loadEvents);
 
         // Add CSS for pulse animation
         const style = document.createElement('style');

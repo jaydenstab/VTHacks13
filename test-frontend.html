@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Frontend API</title>
+</head>
+<body>
+    <h1>Testing Frontend API Connection</h1>
+    <div id="status">Loading...</div>
+    <div id="events"></div>
+
+    <script>
+        async function testAPI() {
+            try {
+                const response = await fetch('http://localhost:8000/api/events/dummy');
+                const data = await response.json();
+                
+                document.getElementById('status').innerHTML = `✅ API Working! Found ${data.length} events`;
+                
+                const eventsList = data.map(event => `
+                    <div style="border: 1px solid #ccc; margin: 10px; padding: 10px;">
+                        <h3>${event.name}</h3>
+                        <p><strong>Address:</strong> ${event.address}</p>
+                        <p><strong>Price:</strong> ${event.price}</p>
+                        <p><strong>Category:</strong> ${event.category}</p>
+                        <p><strong>Coordinates:</strong> ${event.latitude}, ${event.longitude}</p>
+                    </div>
+                `).join('');
+                
+                document.getElementById('events').innerHTML = eventsList;
+            } catch (error) {
+                document.getElementById('status').innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>
