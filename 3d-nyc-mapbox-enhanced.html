@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>NYC 3D Map - Enhanced UI</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #1d1d1f;
+            overflow: hidden;
+            font-weight: 400;
+            letter-spacing: -0.2px;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        /* Settings Button */
+        .settings-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+
+        .settings-button {
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+        }
+
+        .settings-button:hover {
+            background: #0056CC;
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 122, 255, 0.4);
+        }
+
+        .settings-button.active {
+            background: #0056CC;
+        }
+
+        .settings-panel {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            min-width: 280px;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        .settings-panel.active {
+            display: block;
+        }
+
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Enhanced Dropdown */
+        .dropdown-container {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .dropdown-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #1d1d1f;
+            font-size: 14px;
+            letter-spacing: -0.2px;
+        }
+
+        .custom-dropdown {
+            position: relative;
+            width: 100%;
+        }
+
+        .dropdown-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            background: white;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1d1d1f;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+
+        .dropdown-select:hover {
+            border-color: #007AFF;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        .dropdown-select:focus {
+            outline: none;
+            border-color: #007AFF;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+        }
+
+        /* Checkbox Controls */
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(0, 122, 255, 0.05);
+        }
+
+        .checkbox-input {
+            width: 18px;
+            height: 18px;
+            accent-color: #007AFF;
+            cursor: pointer;
+        }
+
+        .checkbox-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1d1d1f;
+            cursor: pointer;
+        }
+
+        /* Enhanced Events Panel */
+        .events-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 400px;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            box-shadow: -8px 0 32px rgba(0, 0, 0, 0.1);
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 1000;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .events-panel.collapsed {
+            transform: translateX(360px);
+        }
+
+        .events-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .events-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #1d1d1f;
+            letter-spacing: -0.4px;
+        }
+
+        .toggle-button {
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-button:hover {
+            background: #0056CC;
+            transform: scale(1.05);
+        }
+
+        .events-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .events-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .events-content::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 3px;
+        }
+
+        .events-content::-webkit-scrollbar-thumb {
+            background: rgba(0, 122, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .events-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 122, 255, 0.5);
+        }
+
+        /* Enhanced Event Cards */
+        .event-card {
+            background: white;
+            border-radius: 16px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .event-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .event-image-container {
+            position: relative;
+            height: 200px;
+            overflow: hidden;
+        }
+
+        .event-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .event-card:hover .event-image {
+            transform: scale(1.05);
+        }
+
+        .event-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.7) 100%);
+        }
+
+        .category-badge {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            backdrop-filter: blur(10px);
+            letter-spacing: 0.5px;
+        }
+
+        .event-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            color: white;
+        }
+
+        .event-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .event-location {
+            font-size: 14px;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .event-details {
+            padding: 16px;
+        }
+
+        .event-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1d1d1f;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .event-description {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.4;
+            margin-bottom: 12px;
+        }
+
+        .event-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .btn-primary {
+            background: #007AFF;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056CC;
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: #007AFF;
+            border: 2px solid #007AFF;
+        }
+
+        .btn-outline:hover {
+            background: #007AFF;
+            color: white;
+        }
+
+        /* Enhanced Markers */
+        .marker {
+            background-color: #007AFF;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 3px solid white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .marker:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .marker.active {
+            transform: scale(1.2);
+            box-shadow: 0 8px 20px rgba(0, 122, 255, 0.4);
+        }
+
+        /* Enhanced Popups */
+        .mapboxgl-popup-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+        }
+
+        .mapboxgl-popup-close-button {
+            background: rgba(0, 0, 0, 0.1);
+            color: #666;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .mapboxgl-popup-close-button:hover {
+            background: rgba(0, 0, 0, 0.2);
+            color: #000;
+        }
+
+        .popup-content {
+            min-width: 250px;
+        }
+
+        .popup-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .popup-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+        }
+
+        .popup-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 4px;
+        }
+
+        .popup-category {
+            background: #007AFF;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .popup-details {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .popup-description {
+            font-size: 13px;
+            color: #1d1d1f;
+            line-height: 1.4;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .events-panel {
+                width: 100%;
+                transform: translateX(100%);
+            }
+            
+            .events-panel.collapsed {
+                transform: translateX(100%);
+            }
+            
+            .map-controls {
+                top: 10px;
+                left: 10px;
+            }
+            
+            .control-panel {
+                min-width: 250px;
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <!-- Settings Button -->
+    <div class="settings-container">
+        <button class="settings-button" id="settingsButton" onclick="toggleSettings()">
+            <span>⚙️</span>
+            <span>Settings</span>
+        </button>
+        
+        <div class="settings-panel" id="settingsPanel">
+            <div class="dropdown-container">
+                <label class="dropdown-label">Light Preset</label>
+                <div class="custom-dropdown">
+                    <select id="lightPreset" class="dropdown-select">
+                        <option value="dawn">🌅 Dawn</option>
+                        <option value="day" selected>☀️ Day</option>
+                        <option value="dusk">🌆 Dusk</option>
+                        <option value="night">🌙 Night</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="showPlaceLabels" class="checkbox-input" checked>
+                    <label for="showPlaceLabels" class="checkbox-label">Show place labels</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="showPOILabels" class="checkbox-input" checked>
+                    <label for="showPOILabels" class="checkbox-label">Show POI labels</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="showRoadLabels" class="checkbox-input" checked>
+                    <label for="showRoadLabels" class="checkbox-label">Show road labels</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="showTransitLabels" class="checkbox-input" checked>
+                    <label for="showTransitLabels" class="checkbox-label">Show transit labels</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Events Panel -->
+    <div class="events-panel" id="eventsPanel">
+        <div class="events-header">
+            <div class="events-title">🎯 NYC Events</div>
+            <button class="toggle-button" onclick="toggleEventsPanel()">−</button>
+        </div>
+        <div class="events-content" id="eventsContent">
+            <!-- Event cards will be populated here -->
+        </div>
+    </div>
+
+    <script>
+        // Mapbox token
+        mapboxgl.accessToken = 'pk.eyJ1IjoiZGV2a3VtYXIxMjMiLCJhIjoiY21nMXZpdTE1MHQwejJub2ZudWd3ZGZ0ZSJ9.Ed8Xd2_5aBZzthiEhdXZgA';
+        
+        // Initialize map
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/standard',
+            center: [-73.935242, 40.730610],
+            zoom: 10,
+            pitch: 45,
+            bearing: -17.6
+        });
+
+        // Event data
+        const events = [
+            {
+                id: 'event-1',
+                name: 'Jazz Night at Blue Note',
+                category: 'music',
+                lat: 40.7306,
+                lng: -74.0023,
+                address: '131 W 3rd St, New York, NY 10012',
+                time: '8:00 PM',
+                price: '$25',
+                description: 'An evening of smooth jazz featuring local artists in the heart of Greenwich Village.'
+            },
+            {
+                id: 'event-2',
+                name: 'Modern Art Exhibition',
+                category: 'art',
+                lat: 40.7614,
+                lng: -73.9776,
+                address: '11 W 53rd St, New York, NY 10019',
+                time: '10:00 AM',
+                price: '$18',
+                description: 'Contemporary art showcase featuring emerging artists and established masters.'
+            },
+            {
+                id: 'event-3',
+                name: 'Food Truck Festival',
+                category: 'food',
+                lat: 40.7589,
+                lng: -73.9851,
+                address: 'Central Park, New York, NY 10019',
+                time: '12:00 PM',
+                price: 'Free',
+                description: 'A culinary adventure featuring the best food trucks from across the city.'
+            },
+            {
+                id: 'event-4',
+                name: 'Comedy Show at The Comedy Cellar',
+                category: 'comedy',
+                lat: 40.7306,
+                lng: -74.0023,
+                address: '117 MacDougal St, New York, NY 10012',
+                time: '9:30 PM',
+                price: '$15',
+                description: 'Laugh the night away with top comedians in an intimate setting.'
+            },
+            {
+                id: 'event-5',
+                name: 'Free Yoga in the Park',
+                category: 'free',
+                lat: 40.7829,
+                lng: -73.9654,
+                address: 'Central Park, New York, NY 10024',
+                time: '7:00 AM',
+                price: 'Free',
+                description: 'Start your day with peaceful yoga practice in Central Park.'
+            },
+            {
+                id: 'event-6',
+                name: 'Brooklyn Bridge Walking Tour',
+                category: 'other',
+                lat: 40.7061,
+                lng: -73.9969,
+                address: 'Brooklyn Bridge, New York, NY 10038',
+                time: '2:00 PM',
+                price: '$20',
+                description: 'Discover the history and architecture of this iconic landmark.'
+            }
+        ];
+
+        // Utility functions
+        const getCategoryColor = (category) => {
+            const colors = {
+                'music': '#FF6B6B',
+                'art': '#4ECDC4',
+                'food': '#45B7D1',
+                'comedy': '#96CEB4',
+                'free': '#FFEAA7',
+                'other': '#DDA0DD'
+            };
+            return colors[category.toLowerCase()] || '#DDA0DD';
+        };
+
+        const getCategoryEmoji = (category) => {
+            const emojis = {
+                'music': '🎵',
+                'art': '🎨',
+                'food': '🍽️',
+                'comedy': '😂',
+                'free': '🆓',
+                'other': '📍'
+            };
+            return emojis[category.toLowerCase()] || '📍';
+        };
+
+        const capitalizeCategory = (category) => {
+            return category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+        };
+
+        const generateEventImage = (event) => {
+            const categoryImages = {
+                'music': [
+                    '1551632811-561732d1e306?q=80&w=400&auto=format&fit=crop',
+                    '1493225457124-3fdc8c7c4e8c?q=80&w=400&auto=format&fit=crop',
+                    '1511671782779-c97d3d27a5d4?q=80&w=400&auto=format&fit=crop'
+                ],
+                'art': [
+                    '1541961014-2dca997ad595?q=80&w=400&auto=format&fit=crop',
+                    '1578662996442-48f60103fc96?q=80&w=400&auto=format&fit=crop',
+                    '1571019613454-1cb2f99b2d8b?q=80&w=400&auto=format&fit=crop'
+                ],
+                'food': [
+                    '1555939594-58d7cb561ad1?q=80&w=400&auto=format&fit=crop',
+                    '1556909112-2a2b4b4b4b4b?q=80&w=400&auto=format&fit=crop',
+                    '1565299624946-b28f40a0ca4b?q=80&w=400&auto=format&fit=crop'
+                ],
+                'comedy': [
+                    '1515187029135-18ee286d815b?q=80&w=400&auto=format&fit=crop',
+                    '1571019613454-1cb2f99b2d8b?q=80&w=400&auto=format&fit=crop',
+                    '1558618048-0e4c82c9d7f1?q=80&w=400&auto=format&fit=crop'
+                ],
+                'free': [
+                    '1441974231531-c6227db76b6e?q=80&w=400&auto=format&fit=crop',
+                    '1506905925346-21bda4d32df4?q=80&w=400&auto=format&fit=crop',
+                    '1571019613454-1cb2f99b2d8b?q=80&w=400&auto=format&fit=crop'
+                ],
+                'other': [
+                    '1506905925346-21bda4d32df4?q=80&w=400&auto=format&fit=crop',
+                    '1551632811-561732d1e306?q=80&w=400&auto=format&fit=crop',
+                    '1441974231531-c6227db76b6e?q=80&w=400&auto=format&fit=crop'
+                ]
+            };
+
+            const images = categoryImages[event.category.toLowerCase()] || categoryImages['other'];
+            const eventIndex = parseInt(event.id.replace(/\D/g, '')) || 0;
+            const imageIndex = eventIndex % images.length;
+            return `https://images.unsplash.com/photo/${images[imageIndex]}`;
+        };
+
+        // Create enhanced markers
+        const createMarker = (event) => {
+            const color = getCategoryColor(event.category);
+            const emoji = getCategoryEmoji(event.category);
+            
+            const el = document.createElement('div');
+            el.className = 'marker';
+            el.style.backgroundColor = color;
+            el.textContent = emoji;
+            
+            const marker = new mapboxgl.Marker(el)
+                .setLngLat([event.lng, event.lat])
+                .setPopup(new mapboxgl.Popup({ 
+                    offset: 25,
+                    closeButton: true,
+                    closeOnClick: false
+                }).setHTML(createPopupContent(event)));
+            
+            el.addEventListener('click', () => {
+                // Remove active class from all markers
+                document.querySelectorAll('.marker').forEach(m => m.classList.remove('active'));
+                // Add active class to clicked marker
+                el.classList.add('active');
+                // Select event in panel
+                selectEventInPanel(event);
+            });
+            
+            return marker;
+        };
+
+        // Create enhanced popup content
+        const createPopupContent = (event) => {
+            const color = getCategoryColor(event.category);
+            const emoji = getCategoryEmoji(event.category);
+            const capitalizedCategory = capitalizeCategory(event.category);
+            
+            return `
+                <div class="popup-content">
+                    <div class="popup-header">
+                        <div class="popup-icon" style="background-color: ${color}">
+                            ${emoji}
+                        </div>
+                        <div>
+                            <div class="popup-title">${event.name}</div>
+                            <div class="popup-category">${capitalizedCategory}</div>
+                        </div>
+                    </div>
+                    <div class="popup-details">
+                        🕐 ${event.time} • 💰 ${event.price}
+                    </div>
+                    <div class="popup-details">
+                        📍 ${event.address}
+                    </div>
+                    <div class="popup-description">
+                        ${event.description}
+                    </div>
+                </div>
+            `;
+        };
+
+        // Create event card
+        const createEventCard = (event) => {
+            const color = getCategoryColor(event.category);
+            const emoji = getCategoryEmoji(event.category);
+            const capitalizedCategory = capitalizeCategory(event.category);
+            const eventImage = generateEventImage(event);
+            
+            return `
+                <div class="event-card" onclick="selectEvent('${event.id}')">
+                    <div class="event-image-container">
+                        <img src="${eventImage}" alt="${event.name}" class="event-image">
+                        <div class="event-overlay"></div>
+                        <div class="category-badge" style="background-color: ${color}">
+                            ${emoji} ${capitalizedCategory}
+                        </div>
+                        <div class="event-info">
+                            <div class="event-title">${event.name}</div>
+                            <div class="event-location">📍 ${event.address}</div>
+                        </div>
+                    </div>
+                    <div class="event-details">
+                        <div class="event-stats">
+                            <div class="stat-item">
+                                <div class="stat-value">${event.price}</div>
+                                <div class="stat-label">Price</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${event.time}</div>
+                                <div class="stat-label">Time</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${capitalizedCategory}</div>
+                                <div class="stat-label">Category</div>
+                            </div>
+                        </div>
+                        <div class="event-description">${event.description}</div>
+                        <div class="event-actions">
+                            <button class="btn btn-primary" onclick="getDirections('${event.address}')">📍 Directions</button>
+                            <button class="btn btn-outline" onclick="learnMore('${event.id}')">Learn More</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        // Populate events panel
+        const populateEventsPanel = () => {
+            const eventsContent = document.getElementById('eventsContent');
+            eventsContent.innerHTML = events.map(createEventCard).join('');
+        };
+
+        // Select event in panel
+        const selectEventInPanel = (event) => {
+            // Remove active class from all cards
+            document.querySelectorAll('.event-card').forEach(card => {
+                card.style.border = '1px solid rgba(0, 0, 0, 0.05)';
+            });
+            
+            // Add active class to selected card
+            const eventCard = document.querySelector(`[onclick="selectEvent('${event.id}')"]`);
+            if (eventCard) {
+                eventCard.style.border = '2px solid #007AFF';
+            }
+        };
+
+        // Select event function
+        const selectEvent = (eventId) => {
+            const event = events.find(e => e.id === eventId);
+            if (event) {
+                // Fly to event location
+                map.flyTo({
+                    center: [event.lng, event.lat],
+                    zoom: 15,
+                    duration: 1000
+                });
+                
+                // Open popup
+                const marker = markers.find(m => m._lngLat.lng === event.lng && m._lngLat.lat === event.lat);
+                if (marker) {
+                    marker.togglePopup();
+                }
+            }
+        };
+
+        // Get directions
+        const getDirections = (address) => {
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
+            window.open(url, '_blank');
+        };
+
+        // Learn more
+        const learnMore = (eventId) => {
+            const event = events.find(e => e.id === eventId);
+            if (event) {
+                alert(`Learn more about: ${event.name}\n\n${event.description}`);
+            }
+        };
+
+        // Toggle settings
+        const toggleSettings = () => {
+            const settingsPanel = document.getElementById('settingsPanel');
+            const settingsButton = document.getElementById('settingsButton');
+            
+            settingsPanel.classList.toggle('active');
+            settingsButton.classList.toggle('active');
+            
+            // Update button text based on state
+            const buttonText = settingsButton.querySelector('span:last-child');
+            if (settingsPanel.classList.contains('active')) {
+                buttonText.textContent = 'Hide';
+            } else {
+                buttonText.textContent = 'Settings';
+            }
+        };
+
+        // Toggle events panel
+        const toggleEventsPanel = () => {
+            const eventsPanel = document.getElementById('eventsPanel');
+            const toggleButton = document.querySelector('.toggle-button');
+            
+            eventsPanel.classList.toggle('collapsed');
+            toggleButton.textContent = eventsPanel.classList.contains('collapsed') ? '+' : '−';
+        };
+
+        // Store markers globally
+        const markers = [];
+
+        // Initialize map and events
+        map.on('style.load', () => {
+            // Add markers
+            events.forEach(event => {
+                const marker = createMarker(event);
+                marker.addTo(map);
+                markers.push(marker);
+            });
+            
+            // Populate events panel
+            populateEventsPanel();
+        });
+
+        // Map controls
+        document.getElementById('lightPreset').addEventListener('change', function() {
+            map.setConfigProperty('basemap', 'lightPreset', this.value);
+        });
+
+        document.getElementById('showPlaceLabels').addEventListener('change', function() {
+            map.setConfigProperty('basemap', 'showPlaceLabels', this.checked);
+        });
+
+        document.getElementById('showPOILabels').addEventListener('change', function() {
+            map.setConfigProperty('basemap', 'showPointOfInterestLabels', this.checked);
+        });
+
+        document.getElementById('showRoadLabels').addEventListener('change', function() {
+            map.setConfigProperty('basemap', 'showRoadLabels', this.checked);
+        });
+
+        document.getElementById('showTransitLabels').addEventListener('change', function() {
+            map.setConfigProperty('basemap', 'showTransitLabels', this.checked);
+        });
+    </script>
+</body>
+</html>
