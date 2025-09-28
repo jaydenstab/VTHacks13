@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🗽 PulseNYC - AI-Powered Event Discovery
 
 A sophisticated hyperlocal event aggregator for New York City that combines web scraping, AI processing, and interactive mapping to help users discover the best events happening around them.
@@ -311,3 +312,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Built with ❤️ for NYC event lovers**
 
 *Discover the pulse of New York City, one event at a time.*
+=======
+# VTHacks13
+>>>>>>> f0e43e71d5d66f78f83fc623085f4b97651caa6e

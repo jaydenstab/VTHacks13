@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -468,3 +469,475 @@
     </script>
 </body>
 </html>
+=======
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseNYC - Leaflet Interactive Map</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #1d1d1f;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #86868b;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .events-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        .events-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 16px;
+        }
+
+        .map-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .control-button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(0, 0, 0, 0.05);
+            color: #1d1d1f;
+        }
+
+        .control-button:hover {
+            background: rgba(0, 122, 255, 0.1);
+        }
+
+        .control-button.active {
+            background: #007AFF;
+            color: white;
+        }
+
+        .event-item {
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .event-item:hover {
+            background: rgba(0, 122, 255, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .event-category {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .category-music { background: #FF3B30; color: white; }
+        .category-art { background: #007AFF; color: white; }
+        .category-food { background: #34C759; color: white; }
+        .category-comedy { background: #FF9500; color: white; }
+        .category-free { background: #FFCC00; color: black; }
+
+        .event-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 4px;
+        }
+
+        .event-details {
+            font-size: 12px;
+            color: #86868b;
+            line-height: 1.3;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .legend-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            font-size: 12px;
+            color: #86868b;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        @media (max-width: 768px) {
+            .events-panel {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                top: auto;
+                width: auto;
+                border-radius: 16px 16px 0 0;
+                max-height: 50vh;
+            }
+            
+            .legend {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">PulseNYC - Interactive Map</h1>
+            <p class="subtitle">Click on markers to explore NYC events</p>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <div class="events-panel">
+                <h2 class="events-title">NYC Events</h2>
+                
+                <div class="map-controls">
+                    <button class="control-button active" onclick="showAllEvents()">All</button>
+                    <button class="control-button" onclick="filterEvents('music')">Music</button>
+                    <button class="control-button" onclick="filterEvents('art')">Art</button>
+                    <button class="control-button" onclick="filterEvents('food')">Food</button>
+                    <button class="control-button" onclick="filterEvents('comedy')">Comedy</button>
+                    <button class="control-button" onclick="filterEvents('free')">Free</button>
+                </div>
+
+                <div id="eventsList">
+                    <!-- Events will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-title">Event Types</div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #FF3B30;"></div>
+                    <span>Music</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #007AFF;"></div>
+                    <span>Art</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #34C759;"></div>
+                    <span>Food</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #FF9500;"></div>
+                    <span>Comedy</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #FFCC00;"></div>
+                    <span>Free</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <script>
+        // Event data
+        const events = [
+            {
+                id: 'jazz',
+                name: 'Jazz Night at Blue Note',
+                category: 'music',
+                lat: 40.7306,
+                lng: -74.0023,
+                address: '131 W 3rd St, New York, NY 10012',
+                time: '8:00 PM',
+                price: '$25',
+                description: 'An evening of smooth jazz featuring local artists'
+            },
+            {
+                id: 'gallery',
+                name: 'Art Gallery Opening',
+                category: 'art',
+                lat: 40.7256,
+                lng: -73.9943,
+                address: '123 Spring St, New York, NY 10012',
+                time: '6:00 PM',
+                price: 'Free',
+                description: 'Contemporary art exhibition opening reception'
+            },
+            {
+                id: 'food',
+                name: 'Food Truck Festival',
+                category: 'food',
+                lat: 40.7356,
+                lng: -73.9906,
+                address: 'Union Square, New York, NY 10003',
+                time: '12:00 PM',
+                price: 'Varies',
+                description: 'Local food trucks serving diverse cuisines'
+            },
+            {
+                id: 'comedy',
+                name: 'Comedy Show at The Comedy Cellar',
+                category: 'comedy',
+                lat: 40.7306,
+                lng: -73.9983,
+                address: '117 MacDougal St, New York, NY 10012',
+                time: '9:30 PM',
+                price: '$20',
+                description: 'Stand-up comedy featuring local comedians'
+            },
+            {
+                id: 'yoga',
+                name: 'Free Yoga in the Park',
+                category: 'free',
+                lat: 40.7308,
+                lng: -73.9973,
+                address: 'Washington Square Park, New York, NY 10012',
+                time: '7:00 AM',
+                price: 'Free',
+                description: 'Morning yoga session in the park'
+            }
+        ];
+
+        // Initialize map
+        const map = L.map('map').setView([40.7282, -73.9857], 13);
+
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Create markers
+        const markers = [];
+        const eventMarkers = {};
+
+        events.forEach(event => {
+            // Create custom icon
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    background: ${getCategoryColor(event.category)};
+                    border: 3px solid white;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 16px;
+                    color: white;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                ">${getCategoryEmoji(event.category)}</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+
+            // Create marker
+            const marker = L.marker([event.lat, event.lng], { icon })
+                .addTo(map)
+                .bindPopup(`
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;">
+                        <h3 style="margin: 0 0 8px 0; color: #1d1d1f; font-size: 16px;">${event.name}</h3>
+                        <div style="background: ${getCategoryColor(event.category)}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; display: inline-block; margin-bottom: 8px;">
+                            ${getCategoryEmoji(event.category)} ${event.category.toUpperCase()}
+                        </div>
+                        <p style="margin: 0 0 4px 0; color: #86868b; font-size: 14px;">📍 ${event.address}</p>
+                        <p style="margin: 0 0 4px 0; color: #86868b; font-size: 14px;">🕐 ${event.time} • 💰 ${event.price}</p>
+                        <p style="margin: 8px 0 0 0; color: #1d1d1f; font-size: 14px;">${event.description}</p>
+                    </div>
+                `);
+
+            markers.push(marker);
+            eventMarkers[event.id] = marker;
+        });
+
+        // Populate events list
+        function populateEventsList(filteredEvents = events) {
+            const eventsList = document.getElementById('eventsList');
+            eventsList.innerHTML = '';
+
+            filteredEvents.forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'event-item';
+                eventDiv.onclick = () => {
+                    map.setView([event.lat, event.lng], 16);
+                    eventMarkers[event.id].openPopup();
+                };
+
+                eventDiv.innerHTML = `
+                    <div class="event-category category-${event.category}">${getCategoryEmoji(event.category)} ${event.category.toUpperCase()}</div>
+                    <div class="event-title">${event.name}</div>
+                    <div class="event-details">
+                        📍 ${event.address}<br>
+                        🕐 ${event.time} • 💰 ${event.price}
+                    </div>
+                `;
+
+                eventsList.appendChild(eventDiv);
+            });
+        }
+
+        // Filter events
+        function filterEvents(category) {
+            document.querySelectorAll('.control-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            const filteredEvents = category === 'all' ? events : events.filter(e => e.category === category);
+            
+            // Show/hide markers
+            markers.forEach(marker => {
+                const event = events.find(e => 
+                    e.lat === marker.getLatLng().lat && e.lng === marker.getLatLng().lng
+                );
+                if (category === 'all' || event.category === category) {
+                    marker.addTo(map);
+                } else {
+                    map.removeLayer(marker);
+                }
+            });
+
+            populateEventsList(filteredEvents);
+        }
+
+        function showAllEvents() {
+            document.querySelectorAll('.control-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Show all markers
+            markers.forEach(marker => {
+                marker.addTo(map);
+            });
+
+            populateEventsList(events);
+        }
+
+        // Helper functions
+        function getCategoryColor(category) {
+            const colors = {
+                'music': '#FF3B30',
+                'art': '#007AFF',
+                'food': '#34C759',
+                'comedy': '#FF9500',
+                'free': '#FFCC00'
+            };
+            return colors[category] || '#86868b';
+        }
+
+        function getCategoryEmoji(category) {
+            const emojis = {
+                'music': '🎵',
+                'art': '🎨',
+                'food': '🍽️',
+                'comedy': '😂',
+                'free': '🆓'
+            };
+            return emojis[category] || '📍';
+        }
+
+        // Initialize
+        populateEventsList();
+
+        // Add some interactivity
+        map.on('click', function(e) {
+            console.log('Map clicked at:', e.latlng);
+        });
+
+        console.log('Leaflet interactive map loaded!');
+        console.log('Click on markers or event items to explore events.');
+    </script>
+</body>
+</html>
+>>>>>>> f0e43e71d5d66f78f83fc623085f4b97651caa6e
