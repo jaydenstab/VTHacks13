@@ -27,7 +27,8 @@ export const fetchEvents = async (): Promise<Event[]> => {
 
 export const fetchRealEvents = async (): Promise<Event[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/events`);
+    // Try the new real-time endpoint first
+    const response = await fetch(`${API_BASE_URL}/api/events/realtime`);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -35,8 +36,11 @@ export const fetchRealEvents = async (): Promise<Event[]> => {
     
     const data = await response.json();
     
+    // Handle the new response format
+    const events = data.events || data;
+    
     // Transform the API response to match our Event interface
-    return data.map((event: any, index: number) => ({
+    return events.map((event: any, index: number) => ({
       id: event.id || `event-${index + 1}`,
       name: event.name || 'Unknown Event',
       category: event.category?.toLowerCase() || 'other',

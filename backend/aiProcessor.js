@@ -21,12 +21,15 @@ async function extractEventData(rawText) {
 
 REQUIREMENTS:
 1. Extract Event Name, Address, Start Time, Date, Price, and Description
-2. Assign ONE category from: ['Music', 'Art', 'Food & Drink', 'Comedy', 'Free', 'Other']
+2. Assign ONE category from: ['Music', 'Art', 'Food & Drink', 'Comedy', 'Free', 'Sports', 'Education', 'Health', 'Technology', 'Business', 'Other']
 3. For addresses, ensure they include "New York, NY" or "NYC" if missing
 4. For prices, use "Free" if the event is free, otherwise use the exact price format (e.g., "$25", "$15-20")
 5. For times, use 12-hour format (e.g., "8:00 PM", "2:00 PM")
 6. For dates, use YYYY-MM-DD format. If no date is specified, use a future date within the next 30 days
 7. Create a brief description (1-2 sentences) if none provided
+8. Focus on REAL events happening in NYC - avoid generic or fake events
+9. If the text contains multiple events, extract the first/main event only
+10. Ensure all data is realistic and current
 
 Text to analyze:
 ${rawText}
@@ -176,32 +179,37 @@ function extractEventDataFallback(rawText) {
   if (addressMatch) {
     address = addressMatch[0];
   } else {
-    // Look for venue names that appear before time patterns
-    const venuePatterns = [
-      // Look for venue names before "Check ticket" (no spaces)
-      /([A-Za-z]+(?:Steakhouse|Restaurant|Bar|Club|Theater|Theatre|Hall|Center|Centre|Park|Square|Refuge|DROM|Marriott))Check/i,
-      // Look for venue names before "Save this event" (no spaces)
-      /([A-Za-z]+(?:Steakhouse|Restaurant|Bar|Club|Theater|Theatre|Hall|Center|Centre|Park|Square|Refuge|DROM|Marriott))Save/i,
-      // Look for venue names before time patterns (no spaces)
-      /([A-Za-z]+(?:Steakhouse|Restaurant|Bar|Club|Theater|Theatre|Hall|Center|Centre|Park|Square|Refuge|DROM|Marriott))(?:PM|AM)/i,
-      // Look for venue names in general
-      /([A-Za-z]+(?:Steakhouse|Restaurant|Bar|Club|Theater|Theatre|Hall|Center|Centre|Park|Square|Refuge|DROM|Marriott))/i
+    // Look for specific NYC locations and venues
+    const locationPatterns = [
+      // Central Park
+      /Central Park,?\s*New York,?\s*NY\s*\d{5}/i,
+      // Brooklyn locations
+      /Brooklyn,?\s*NY\s*\d{5}/i,
+      // Manhattan locations
+      /\d+\s+[A-Za-z\s]+(?:St|Ave|Blvd|Rd|Dr|Way|Pl|Ct|Ln|Pkwy|Sq|Park|Square|Street|Avenue|Boulevard|Road|Drive|Place|Court|Lane|Parkway),?\s*New York,?\s*NY\s*\d{5}/i,
+      // Specific venues
+      /(?:Brooklyn Museum|Metropolitan Museum|NYC Public Library|Prospect Park|Flushing Meadows Park|Washington Square Park|Bryant Park|Union Square)/i
     ];
     
-    for (const pattern of venuePatterns) {
+    for (const pattern of locationPatterns) {
       const match = rawText.match(pattern);
-      if (match && match[1]) {
-        const venue = match[1].trim();
-        if (venue.length > 2 && venue.length < 50 && !venue.includes('PM') && !venue.includes('AM')) {
-          address = venue + ', New York, NY';
-          break;
-        }
+      if (match) {
+        address = match[0].trim();
+        break;
       }
     }
     
-    // If still no address found, use default NYC location
+    // If still no address found, try to extract from the text more broadly
     if (!address) {
-      address = 'New York, NY';
+      // Look for any text that contains NYC location indicators
+      const broadLocationPattern = /([A-Za-z\s]+(?:Park|Museum|Library|Square|Bridge|Avenue|Street|Boulevard|Road|Drive|Place|Court|Lane|Parkway)),?\s*(?:New York|NYC|Brooklyn|Manhattan|Queens|Bronx)/i;
+      const broadMatch = rawText.match(broadLocationPattern);
+      if (broadMatch) {
+        address = broadMatch[0].trim();
+      } else {
+        // Last resort: use default NYC location
+        address = 'New York, NY';
+      }
     }
   }
   
@@ -235,6 +243,34 @@ function extractEventDataFallback(rawText) {
     category = 'Comedy';
   } else if (lowerText.includes('free') && !lowerText.includes('free')) {
     category = 'Free';
+  }
+  
+  // Clean up the event name to remove the full text
+  if (eventName.includes(' - ')) {
+    eventName = eventName.split(' - ')[0];
+  }
+  
+  // Ensure we have a proper address
+  if (!address || address === 'New York, NY') {
+    // Try to extract address from the raw text more aggressively
+    const addressExtractionPatterns = [
+      // Look for specific addresses with zip codes
+      /\d+\s+[A-Za-z\s]+(?:St|Ave|Blvd|Rd|Dr|Way|Pl|Ct|Ln|Pkwy|Sq|Park|Square|Street|Avenue|Boulevard|Road|Drive|Place|Court|Lane|Parkway),?\s*New York,?\s*NY\s*\d{5}/i,
+      // Look for park names
+      /(?:Central Park|Prospect Park|Brooklyn Bridge Park|Washington Square Park|Bryant Park|Union Square)/i,
+      // Look for museum names
+      /(?:Brooklyn Museum|Metropolitan Museum|NYC Public Library)/i,
+      // Look for any address pattern
+      /\d+\s+[A-Za-z\s]+(?:St|Ave|Blvd|Rd|Dr|Way|Pl|Ct|Ln|Pkwy|Sq|Park|Square|Street|Avenue|Boulevard|Road|Drive|Place|Court|Lane|Parkway)/i
+    ];
+    
+    for (const pattern of addressExtractionPatterns) {
+      const match = rawText.match(pattern);
+      if (match) {
+        address = match[0].trim();
+        break;
+      }
+    }
   }
   
   return {

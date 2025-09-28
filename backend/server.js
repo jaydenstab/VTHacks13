@@ -33,7 +33,7 @@ app.get('/api/events', async (req, res) => {
     for (let i = 0; i < rawEventTexts.length; i++) {
       try {
         const eventData = await extractEventData(rawEventTexts[i]);
-        if (eventData && eventData.eventName) {
+        if (eventData && eventData.eventName && eventData.eventName !== 'Unknown Event') {
           // Step 3: Geocode the address
           const coordinates = await geocodeAddress(eventData.address);
           if (coordinates) {
@@ -43,10 +43,12 @@ app.get('/api/events', async (req, res) => {
               description: eventData.description || 'No description available',
               address: eventData.address,
               startTime: eventData.startTime,
+              date: eventData.date,
               price: eventData.price,
               category: eventData.category,
               latitude: coordinates.latitude,
-              longitude: coordinates.longitude
+              longitude: coordinates.longitude,
+              source: 'real-time-scraping'
             });
           }
         }
@@ -63,6 +65,63 @@ app.get('/api/events', async (req, res) => {
     console.error('Error in /api/events:', error);
     res.status(500).json({ 
       error: 'Failed to fetch events', 
+      message: error.message 
+    });
+  }
+});
+
+// New endpoint for real-time events with better data quality
+app.get('/api/events/realtime', async (req, res) => {
+  try {
+    console.log('Fetching real-time NYC events...');
+    
+    // Step 1: Scrape raw data from multiple NYC event sources
+    const rawEventTexts = await scrapeNYCEvents();
+    console.log(`Scraped ${rawEventTexts.length} raw event texts from multiple sources`);
+    
+    // Step 2: Process each event with AI
+    const processedEvents = [];
+    for (let i = 0; i < rawEventTexts.length; i++) {
+      try {
+        const eventData = await extractEventData(rawEventTexts[i]);
+        if (eventData && eventData.eventName && eventData.eventName !== 'Unknown Event') {
+          // Step 3: Geocode the address
+          const coordinates = await geocodeAddress(eventData.address);
+          if (coordinates) {
+            processedEvents.push({
+              id: `realtime_event_${i + 1}`,
+              name: eventData.eventName,
+              description: eventData.description || 'No description available',
+              address: eventData.address,
+              startTime: eventData.startTime,
+              date: eventData.date,
+              price: eventData.price,
+              category: eventData.category,
+              latitude: coordinates.latitude,
+              longitude: coordinates.longitude,
+              source: 'real-time-scraping',
+              scrapedAt: new Date().toISOString()
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`Error processing event ${i + 1}:`, error.message);
+        // Continue processing other events
+      }
+    }
+    
+    console.log(`Successfully processed ${processedEvents.length} real-time events`);
+    res.json({
+      events: processedEvents,
+      totalCount: processedEvents.length,
+      scrapedAt: new Date().toISOString(),
+      sources: ['NYC Parks', 'Brooklyn Museum', 'Central Park', 'NYC Public Library', 'Time Out NYC', 'Eventbrite NYC']
+    });
+    
+  } catch (error) {
+    console.error('Error in /api/events/realtime:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch real-time events', 
       message: error.message 
     });
   }

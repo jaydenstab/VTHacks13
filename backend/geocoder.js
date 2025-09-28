@@ -55,12 +55,26 @@ async function geocodeAddress(address) {
 function getFallbackCoordinates(address) {
   const lowerAddress = address.toLowerCase();
   
-  // Common NYC neighborhood fallback coordinates
+  // Common NYC neighborhood and venue fallback coordinates
   const fallbackCoords = {
-    'union square': { latitude: 40.7356, longitude: -73.9906 },
-    'washington square': { latitude: 40.7308, longitude: -73.9973 },
-    'times square': { latitude: 40.7580, longitude: -73.9855 },
+    // Parks
     'central park': { latitude: 40.7829, longitude: -73.9654 },
+    'prospect park': { latitude: 40.6602, longitude: -73.9690 },
+    'brooklyn bridge park': { latitude: 40.6961, longitude: -73.9969 },
+    'washington square park': { latitude: 40.7308, longitude: -73.9973 },
+    'bryant park': { latitude: 40.7536, longitude: -73.9832 },
+    'union square': { latitude: 40.7356, longitude: -73.9906 },
+    'flushing meadows park': { latitude: 40.7505, longitude: -73.8440 },
+    
+    // Museums and Libraries
+    'brooklyn museum': { latitude: 40.6712, longitude: -73.9636 },
+    'metropolitan museum': { latitude: 40.7794, longitude: -73.9632 },
+    'nyc public library': { latitude: 40.7532, longitude: -73.9822 },
+    '200 eastern pkwy': { latitude: 40.6712, longitude: -73.9636 },
+    '1000 5th ave': { latitude: 40.7794, longitude: -73.9632 },
+    '476 5th ave': { latitude: 40.7532, longitude: -73.9822 },
+    
+    // Neighborhoods
     'brooklyn': { latitude: 40.6782, longitude: -73.9442 },
     'queens': { latitude: 40.7282, longitude: -73.7949 },
     'manhattan': { latitude: 40.7831, longitude: -73.9712 },
@@ -72,13 +86,43 @@ function getFallbackCoordinates(address) {
     'upper west side': { latitude: 40.7870, longitude: -73.9754 },
     'harlem': { latitude: 40.8075, longitude: -73.9626 },
     'chinatown': { latitude: 40.7158, longitude: -73.9970 },
-    'little italy': { latitude: 40.7191, longitude: -73.9973 }
+    'little italy': { latitude: 40.7191, longitude: -73.9973 },
+    
+    // Specific addresses
+    '200 eastern pkwy, brooklyn': { latitude: 40.6712, longitude: -73.9636 },
+    '1000 5th ave, new york': { latitude: 40.7794, longitude: -73.9632 },
+    '476 5th ave, new york': { latitude: 40.7532, longitude: -73.9822 },
+    'central park, new york, ny 10024': { latitude: 40.7829, longitude: -73.9654 },
+    'brooklyn, ny 11201': { latitude: 40.6961, longitude: -73.9969 },
+    'brooklyn, ny 11215': { latitude: 40.6602, longitude: -73.9690 },
+    'brooklyn, ny 11238': { latitude: 40.6712, longitude: -73.9636 },
+    'queens, ny 11368': { latitude: 40.7505, longitude: -73.8440 }
   };
   
-  // Check for neighborhood matches
-  for (const [neighborhood, coords] of Object.entries(fallbackCoords)) {
-    if (lowerAddress.includes(neighborhood)) {
-      console.log(`Using fallback coordinates for ${neighborhood}: ${coords.latitude}, ${coords.longitude}`);
+  // Check for exact matches first
+  for (const [location, coords] of Object.entries(fallbackCoords)) {
+    if (lowerAddress === location || lowerAddress.includes(location)) {
+      console.log(`Using fallback coordinates for ${location}: ${coords.latitude}, ${coords.longitude}`);
+      return coords;
+    }
+  }
+  
+  // Check for partial matches with more flexible matching
+  for (const [location, coords] of Object.entries(fallbackCoords)) {
+    // Split the location into words and check if most words match
+    const locationWords = location.split(' ');
+    const addressWords = lowerAddress.split(' ');
+    
+    let matchCount = 0;
+    for (const word of locationWords) {
+      if (addressWords.some(addrWord => addrWord.includes(word) || word.includes(addrWord))) {
+        matchCount++;
+      }
+    }
+    
+    // If more than half the words match, use these coordinates
+    if (matchCount >= Math.ceil(locationWords.length / 2)) {
+      console.log(`Using partial match coordinates for ${location}: ${coords.latitude}, ${coords.longitude}`);
       return coords;
     }
   }
