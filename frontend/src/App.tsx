@@ -127,7 +127,7 @@ const App: React.FC = () => {
           console.log('Initializing map...');
           map.current = new mapboxgl.Map({
             container: mapContainer.current,
-            style: 'mapbox://styles/mapbox/standard',
+            style: 'mapbox://styles/mapbox/light-v11',
             center: [-73.935242, 40.730610],
             zoom: 10,
             pitch: 45,
@@ -137,6 +137,8 @@ const App: React.FC = () => {
           map.current.on('load', () => {
             console.log('Map loaded successfully');
             addMarkersToMap();
+            // Apply initial light preset
+            applyLightPreset();
           });
 
           map.current.on('error', (e) => {
@@ -150,6 +152,61 @@ const App: React.FC = () => {
 
     initMap();
   }, [events, mapLoaded]);
+
+  // Apply light preset when it changes
+  useEffect(() => {
+    if (map.current) {
+      applyLightPreset();
+    }
+  }, [lightPreset]);
+
+  // Apply label settings when they change
+  useEffect(() => {
+    if (map.current) {
+      applyLabelSettings();
+    }
+  }, [showPlaceLabels, showPOILabels, showRoadLabels, showTransitLabels]);
+
+  // Function to apply label settings
+  const applyLabelSettings = () => {
+    if (!map.current) return;
+    
+    try {
+      map.current.setConfigProperty('basemap', 'showPlaceLabels', showPlaceLabels);
+      map.current.setConfigProperty('basemap', 'showPointOfInterestLabels', showPOILabels);
+      map.current.setConfigProperty('basemap', 'showRoadLabels', showRoadLabels);
+      map.current.setConfigProperty('basemap', 'showTransitLabels', showTransitLabels);
+      console.log('Applied label settings');
+    } catch (error) {
+      console.error('Error applying label settings:', error);
+    }
+  };
+
+  // Function to apply light preset
+  const applyLightPreset = () => {
+    if (!map.current) return;
+    
+    try {
+      // Apply light preset using Mapbox's setConfigProperty
+      map.current.setConfigProperty('basemap', 'lightPreset', lightPreset);
+      console.log(`Applied light preset: ${lightPreset}`);
+    } catch (error) {
+      console.error('Error applying light preset:', error);
+      // Fallback: try to set the style based on light preset
+      const styleMap = {
+        'dawn': 'mapbox://styles/mapbox/light-v11',
+        'day': 'mapbox://styles/mapbox/light-v11',
+        'dusk': 'mapbox://styles/mapbox/dark-v11',
+        'night': 'mapbox://styles/mapbox/dark-v11'
+      };
+      
+      const newStyle = styleMap[lightPreset as keyof typeof styleMap] || 'mapbox://styles/mapbox/light-v11';
+      if (map.current.getStyle().name !== newStyle) {
+        map.current.setStyle(newStyle);
+        console.log(`Applied fallback style: ${newStyle}`);
+      }
+    }
+  };
 
   // Add markers to map
   const addMarkersToMap = () => {
