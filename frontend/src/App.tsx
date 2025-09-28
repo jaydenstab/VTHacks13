@@ -8,8 +8,10 @@ interface Event {
   lng: number;
   address: string;
   time: string;
+  date: string;
   price: string;
   description: string;
+  website?: string | null;
 }
 
 const App: React.FC = () => {
@@ -25,6 +27,8 @@ const App: React.FC = () => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isEventsPanelOpen, setIsEventsPanelOpen] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
@@ -35,8 +39,34 @@ const App: React.FC = () => {
     'music': { color: '#FF6B6B', emoji: '🎵' },
     'art': { color: '#4ECDC4', emoji: '🎨' },
     'food': { color: '#45B7D1', emoji: '🍽️' },
+    'food & drink': { color: '#45B7D1', emoji: '🍽️' },
     'comedy': { color: '#96CEB4', emoji: '😂' },
     'free': { color: '#FFEAA7', emoji: '🆓' },
+    'free food': { color: '#FFA500', emoji: '🍎' },
+    'influencers': { color: '#E91E63', emoji: '📱' },
+    'heritage': { color: '#8B4513', emoji: '🏛️' },
+    'sports': { color: '#FF5722', emoji: '⚽' },
+    'education': { color: '#2196F3', emoji: '📚' },
+    'health & wellness': { color: '#4CAF50', emoji: '🧘' },
+    'health': { color: '#4CAF50', emoji: '🧘' },
+    'technology': { color: '#9C27B0', emoji: '💻' },
+    'business': { color: '#607D8B', emoji: '💼' },
+    'theater': { color: '#FF9800', emoji: '🎭' },
+    'broadway': { color: '#FF9800', emoji: '🎭' },
+    'entertainment': { color: '#E91E63', emoji: '🎪' },
+    'performance': { color: '#FF9800', emoji: '🎭' },
+    'community': { color: '#4CAF50', emoji: '🤝' },
+    'cultural': { color: '#8B4513', emoji: '🏛️' },
+    'networking': { color: '#607D8B', emoji: '🤝' },
+    'workshop': { color: '#2196F3', emoji: '🔧' },
+    'tour': { color: '#795548', emoji: '🚶' },
+    'outdoor': { color: '#4CAF50', emoji: '🌳' },
+    'family': { color: '#FFC107', emoji: '👨‍👩‍👧‍👦' },
+    'nightlife': { color: '#673AB7', emoji: '🌃' },
+    'shopping': { color: '#FF5722', emoji: '🛍️' },
+    'fashion': { color: '#E91E63', emoji: '👗' },
+    'photography': { color: '#607D8B', emoji: '📸' },
+    'gaming': { color: '#9C27B0', emoji: '🎮' },
     'other': { color: '#DDA0DD', emoji: '📍' }
   };
 
@@ -68,47 +98,153 @@ const App: React.FC = () => {
     const loadEvents = async () => {
       try {
         setLoading(true);
+        
+        // Load events from API
         console.log('Loading events from API...');
         
-        const response = await fetch('http://localhost:8000/api/events');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
+        const response = await fetch('http://localhost:8000/api/events', {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
         console.log('Data received:', data);
+        console.log('Number of events from API:', data.length);
+        console.log('First event from API:', data[0]);
         
-        // Transform the API response
-        const transformedEvents = data.map((event: any, index: number) => ({
-          id: event.id || `event-${index + 1}`,
-          name: event.name || 'Unknown Event',
-          category: (event.category || 'other').toLowerCase(),
-          lat: event.latitude || 40.7128,
-          lng: event.longitude || -74.0060,
-          address: event.address || 'New York, NY',
-          time: event.startTime || 'TBD',
-          price: event.price || 'Unknown',
-          description: event.description || 'No description available'
-        }));
+        // Transform the API response and filter out past events
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to start of day for comparison
         
-        setEvents(transformedEvents);
-        setError(null);
-        console.log(`Loaded ${transformedEvents.length} events:`, transformedEvents.map(e => e.name));
+        const transformedEvents = data
+          .map((event: any, index: number) => ({
+            id: event.id || `event-${index + 1}`,
+            name: event.name || 'Unknown Event',
+            category: (event.category || 'other').toLowerCase(),
+            lat: event.latitude || 40.7128,
+            lng: event.longitude || -74.0060,
+            address: event.address || 'New York, NY',
+            time: event.startTime || 'TBD',
+            date: event.date || null,
+            price: event.price || 'Unknown',
+            description: event.description || 'No description available',
+            website: event.website || null
+          }))
+          .filter((event: Event) => {
+            // Filter out past events
+            if (!event.date) return true; // Keep events without dates for now
+            const eventDate = new Date(event.date);
+            return eventDate >= today;
+          });
+        
+        // Check if we have sufficient events from API, otherwise use fallback
+        if (transformedEvents.length < 5) {
+          console.log(`API returned only ${transformedEvents.length} events, using fallback data...`);
+          const { events: fallbackEvents } = await import('./data/events');
+          setEvents(fallbackEvents);
+          setError(null);
+          console.log('Loaded fallback events:', fallbackEvents.length);
+        } else {
+          setEvents(transformedEvents);
+          setError(null);
+          console.log(`Loaded ${transformedEvents.length} events from API:`, transformedEvents.map(e => e.name));
+          console.log('First transformed event:', transformedEvents[0]);
+        }
       } catch (err) {
         console.error('Error loading events:', err);
+        console.error('Error details:', err);
+        
+        // Try fallback API endpoint
+        try {
+          console.log('Trying fallback API endpoint...');
+          const fallbackResponse = await fetch('http://localhost:8000/api/events/realtime');
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            const fallbackEvents = fallbackData.events || fallbackData;
+            console.log('Fallback API worked, got', fallbackEvents.length, 'events');
+            
+            const transformedFallbackEvents = fallbackEvents
+              .map((event: any, index: number) => ({
+                id: event.id || `event-${index + 1}`,
+                name: event.name || 'Unknown Event',
+                category: (event.category || 'other').toLowerCase(),
+                lat: event.latitude || 40.7128,
+                lng: event.longitude || -74.0060,
+                address: event.address || 'New York, NY',
+                time: event.startTime || 'TBD',
+                date: event.date || null,
+                price: event.price || 'Unknown',
+                description: event.description || 'No description available',
+                website: event.website || null
+              }));
+            
+            setEvents(transformedFallbackEvents);
+            setError(null);
+            console.log('Fallback events loaded successfully');
+            return;
+          }
+        } catch (fallbackErr) {
+          console.error('Fallback API also failed:', fallbackErr);
+        }
+        
         setError(err instanceof Error ? err.message : 'Unknown error');
-        setEvents([]);
+        
+        // Load fallback events from local data
+        console.log('Loading fallback events from local data...');
+        try {
+          const { events: fallbackEvents } = await import('./data/events');
+          console.log('Loaded fallback events:', fallbackEvents.length);
+          setEvents(fallbackEvents);
+          setError(null); // Clear error since we have fallback data
+        } catch (fallbackErr) {
+          console.error('Failed to load fallback events:', fallbackErr);
+          setEvents([]);
+        }
+        
+        // Try to initialize map even if events fail to load
+        console.log('Events failed to load, but will try to show map anyway');
       } finally {
         setLoading(false);
       }
     };
 
     loadEvents();
-  }, []);
+  }, []); // Remove searchQuery dependency - only load once on mount
+
+  // Search effect - filter events locally when search query changes
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const filtered = events.filter(event => 
+        event.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredEvents(filtered);
+    } else {
+      setFilteredEvents(events);
+    }
+  }, [searchQuery, events]);
 
   // Initialize map when both events and mapbox are loaded
   useEffect(() => {
-    if (events.length === 0 || !mapLoaded) return;
+    console.log('Map effect triggered - events:', events.length, 'filteredEvents:', filteredEvents.length, 'mapLoaded:', mapLoaded);
+    if (!mapLoaded) {
+      console.log('Mapbox not loaded yet, waiting...');
+      return;
+    }
+    
+    // Initialize map even if no events (we'll add markers later)
+    if (events.length === 0) {
+      console.log('No events yet, but initializing map anyway');
+    }
 
     const initMap = () => {
       try {
@@ -127,47 +263,17 @@ const App: React.FC = () => {
           console.log('Initializing map...');
           map.current = new mapboxgl.Map({
             container: mapContainer.current,
-            style: 'mapbox://styles/mapbox/standard', // Use standard style for 3D features
+            style: 'mapbox://styles/mapbox/streets-v12', // Use simpler style first
             center: [-73.935242, 40.730610],
-            zoom: 10,
-            pitch: 45,
-            bearing: -17.6
+            zoom: 10
           });
 
           map.current.on('load', () => {
             console.log('Map loaded successfully');
             
-            // Add 3D terrain if available
-            try {
-              map.current.addSource('mapbox-dem', {
-                'type': 'raster-dem',
-                'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
-                'tileSize': 512,
-                'maxzoom': 14
-              });
-              
-              // Add terrain layer
-              map.current.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
-              
-              // Add sky layer for better 3D effect
-              map.current.addLayer({
-                'id': 'sky',
-                'type': 'sky',
-                'paint': {
-                  'sky-type': 'atmosphere',
-                  'sky-atmosphere-sun': [0.0, 0.0],
-                  'sky-atmosphere-sun-intensity': 15
-                }
-              });
-              
-              console.log('3D terrain and sky added successfully');
-            } catch (error) {
-              console.log('3D features not available, using standard map');
-            }
-            
+            // Add markers to map
             addMarkersToMap();
-            // Apply initial light preset
-            applyLightPreset();
+            console.log('Map initialization complete');
           });
 
           map.current.on('error', (e) => {
@@ -180,7 +286,15 @@ const App: React.FC = () => {
     };
 
     initMap();
-  }, [events, mapLoaded]);
+  }, [events, filteredEvents, mapLoaded]);
+
+  // Update markers when filteredEvents changes
+  useEffect(() => {
+    if (map.current && mapLoaded) {
+      console.log('Updating markers for filteredEvents:', filteredEvents.length);
+      addMarkersToMap();
+    }
+  }, [filteredEvents, mapLoaded]);
 
   // Apply light preset when it changes
   useEffect(() => {
@@ -314,7 +428,7 @@ const App: React.FC = () => {
     markers.current.forEach(marker => marker.remove());
     markers.current = [];
 
-    events.forEach(event => {
+    filteredEvents.forEach(event => {
       const config = categoryConfig[event.category as keyof typeof categoryConfig] || categoryConfig.other;
       
       const el = document.createElement('div');
@@ -413,6 +527,13 @@ const App: React.FC = () => {
           align-items: center;
           gap: 8px;
         ">
+          <span style="font-size: 16px;">📅</span>
+          <span style="font-weight: 500;">${event.date ? new Date(event.date).toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+          }) : 'Date TBD'}</span>
+          <span style="color: #d1d5db;">•</span>
           <span style="font-size: 16px;">🕐</span>
           <span style="font-weight: 500;">${event.time}</span>
           <span style="color: #d1d5db;">•</span>
@@ -448,7 +569,7 @@ const App: React.FC = () => {
 
   // Helper functions
   const focusOnEvent = (eventId: string) => {
-    const event = events.find(e => e.id === eventId);
+    const event = filteredEvents.find(e => e.id === eventId);
     if (event && map.current) {
       map.current.flyTo({
         center: [event.lng, event.lat],
@@ -464,7 +585,7 @@ const App: React.FC = () => {
   };
 
   const showEventDetails = (eventId: string) => {
-    const event = events.find(e => e.id === eventId);
+    const event = filteredEvents.find(e => e.id === eventId);
     if (event) {
       setSelectedEvent(event);
     }
@@ -575,7 +696,7 @@ const App: React.FC = () => {
             <>
               <div>
                 <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1d1d1f', marginBottom: '5px' }}>NYC Events</h2>
-                <p style={{ fontSize: '14px', color: '#666' }}>{events.length} events found</p>
+                <p style={{ fontSize: '14px', color: '#666' }}>{filteredEvents.length} events found</p>
               </div>
               <button
                 onClick={() => setIsEventsPanelOpen(false)}
@@ -636,6 +757,45 @@ const App: React.FC = () => {
           )}
         </div>
         
+        {/* Search Input */}
+        {isEventsPanelOpen && (
+          <div style={{ 
+            padding: '0 20px 15px 20px',
+            borderBottom: '1px solid rgba(0,0,0,0.1)'
+          }}>
+            <input
+              type="text"
+              placeholder="Search events by name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault(); // Prevent form submission
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '12px',
+                fontSize: '14px',
+                background: 'white',
+                outline: 'none',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#667eea';
+                e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#e5e7eb';
+                e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+              }}
+            />
+          </div>
+        )}
+        
         {/* Events List */}
         {isEventsPanelOpen && (
           <div style={{ 
@@ -643,7 +803,7 @@ const App: React.FC = () => {
             overflowY: 'auto',
             padding: '0 20px 20px 20px'
           }}>
-            {events.map((event, index) => {
+            {filteredEvents.map((event, index) => {
               const config = categoryConfig[event.category as keyof typeof categoryConfig] || categoryConfig.other;
               return (
                 <div
@@ -701,6 +861,12 @@ const App: React.FC = () => {
                           boxShadow: `0 2px 6px ${config.color}40`
                         }}>
                           {event.category}
+                        </span>
+                        <span style={{ fontSize: '12px', color: '#666' }}>
+                          {event.date ? new Date(event.date).toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric' 
+                          }) : 'Date TBD'}
                         </span>
                         <span style={{ fontSize: '12px', color: '#666' }}>{event.time}</span>
                       </div>
@@ -1118,6 +1284,17 @@ const App: React.FC = () => {
 
             <div style={{ marginBottom: '24px', background: 'rgba(255, 255, 255, 0.6)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(0, 0, 0, 0.05)' }}>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+                <span style={{ marginRight: '12px', fontSize: '20px' }}>📅</span>
+                <span style={{ fontWeight: '600', fontSize: '16px' }}>
+                  {selectedEvent.date ? new Date(selectedEvent.date).toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  }) : 'Date TBD'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
                 <span style={{ marginRight: '12px', fontSize: '20px' }}>🕐</span>
                 <span style={{ fontWeight: '600', fontSize: '16px' }}>{selectedEvent.time}</span>
               </div>
@@ -1125,10 +1302,37 @@ const App: React.FC = () => {
                 <span style={{ marginRight: '12px', fontSize: '20px' }}>💰</span>
                 <span style={{ fontWeight: '600', fontSize: '16px' }}>{selectedEvent.price}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '12px' }}>
                 <span style={{ marginRight: '12px', fontSize: '20px', marginTop: '2px' }}>📍</span>
                 <span style={{ fontWeight: '600', fontSize: '16px', lineHeight: '1.4' }}>{selectedEvent.address}</span>
               </div>
+              {selectedEvent.website && (
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{ marginRight: '12px', fontSize: '20px' }}>🌐</span>
+                  <a 
+                    href={selectedEvent.website} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ 
+                      fontWeight: '600', 
+                      fontSize: '16px', 
+                      color: '#1976d2',
+                      textDecoration: 'none',
+                      transition: 'color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#1565c0';
+                      e.currentTarget.style.textDecoration = 'underline';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#1976d2';
+                      e.currentTarget.style.textDecoration = 'none';
+                    }}
+                  >
+                    Visit Event Website
+                  </a>
+                </div>
+              )}
             </div>
 
             <div style={{ marginBottom: '24px' }}>
@@ -1140,7 +1344,9 @@ const App: React.FC = () => {
                 background: 'rgba(255, 255, 255, 0.6)',
                 padding: '16px',
                 borderRadius: '12px',
-                border: '1px solid rgba(0, 0, 0, 0.05)'
+                border: '1px solid rgba(0, 0, 0, 0.05)',
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word'
               }}>
                 {selectedEvent.description}
               </p>

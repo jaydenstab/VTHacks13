@@ -8,6 +8,7 @@ export interface Event {
   category: string;
   latitude: number;
   longitude: number;
+  website: string | null;
 }
 
-export type EventCategory = 'All' | 'Music' | 'Art' | 'Food & Drink' | 'Comedy' | 'Free' | 'Other';
+export type EventCategory = 'All' | 'Music' | 'Art' | 'Food & Drink' | 'Comedy' | 'Free' | 'Free Food' | 'Influencers' | 'Heritage' | 'Sports' | 'Education' | 'Health & Wellness' | 'Technology' | 'Business' | 'Theater' | 'Broadway' | 'Entertainment' | 'Performance' | 'Community' | 'Cultural' | 'Networking' | 'Workshop' | 'Tour' | 'Outdoor' | 'Family' | 'Nightlife' | 'Shopping' | 'Fashion' | 'Photography' | 'Gaming' | 'Other';

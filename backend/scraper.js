@@ -7,17 +7,51 @@ const cheerio = require('cheerio');
  */
 async function scrapeNYCEvents() {
   try {
-    console.log('🎯 Using curated NYC events for reliable data quality');
+    console.log('🎯 Starting comprehensive NYC event scraping...');
     
-    // For now, use curated fallback data which is more reliable than scraping
-    // This ensures we have real, current NYC events
-    const fallbackEvents = getFallbackEvents();
-    console.log(`📝 Loaded ${fallbackEvents.length} curated NYC events`);
+    const allEvents = [];
     
-    return fallbackEvents;
+    // Try to scrape from multiple sources
+    const scrapers = [
+      { name: 'NYC Parks', fn: scrapeNYCParks },
+      { name: 'Brooklyn Museum', fn: scrapeBrooklynMuseum },
+      { name: 'Central Park', fn: scrapeCentralPark },
+      { name: 'NYC Public Library', fn: scrapeNYCPublicLibrary },
+      { name: 'Time Out NYC', fn: scrapeTimeOutNYC },
+      { name: 'NYC Go', fn: scrapeNYCGo },
+      { name: 'Eventbrite NYC', fn: scrapeEventbriteNYC },
+      { name: 'Eventbrite Free Food', fn: scrapeEventbriteFreeFood }
+    ];
+    
+    for (const scraper of scrapers) {
+      try {
+        console.log(`🔍 Scraping ${scraper.name}...`);
+        const events = await scraper.fn();
+        if (events && events.length > 0) {
+          allEvents.push(...events);
+          console.log(`✅ Found ${events.length} events from ${scraper.name}`);
+        } else {
+          console.log(`⚠️ No events found from ${scraper.name}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error scraping ${scraper.name}:`, error.message);
+      }
+    }
+    
+    // If we got real scraped data, use it
+    if (allEvents.length > 0) {
+      console.log(`🎉 Successfully scraped ${allEvents.length} real events from multiple sources`);
+      return allEvents;
+    } else {
+      console.log('⚠️ No real events scraped, using fallback data');
+      const fallbackEvents = getFallbackEvents();
+      console.log(`📝 Loaded ${fallbackEvents.length} curated NYC events`);
+      return fallbackEvents;
+    }
     
   } catch (error) {
-    console.error('Error in event loading:', error.message);
+    console.error('Error in comprehensive event scraping:', error.message);
+    console.log('🔄 Falling back to curated events...');
     return getFallbackEvents();
   }
 }
@@ -81,20 +115,57 @@ async function scrapeNYCParks() {
       const $element = $(element);
       const text = $element.text().trim();
       
-      // Better filtering for actual event content
+      // Better filtering for actual event content - exclude generic lists and guides
+      const genericContent = [
+        'Things to do', 'Best things', 'Top things', 'Guide to', 'Complete guide',
+        'Ultimate guide', 'Everything you need', 'Must-see', 'Must-visit',
+        'Local guide', 'Tourist guide', 'Visitor guide', 'NYC guide',
+        'Activities & Amenities', 'Park Features', 'Search', 'Menu', 'Navigation', 'Footer',
+        '100 best', '80 best', '50 best', '25 best', '10 best', '5 best',
+        'attractions that should be on your list', 'locals and tourists',
+        'Experience the absolute best', 'Discover the New York attractions',
+        'locals love including', 'Complete guide to', 'Ultimate guide to',
+        'Everything you need to know', 'Must-see attractions', 'Must-visit places',
+        'Best of NYC', 'Top attractions', 'NYC attractions', 'New York attractions',
+        'heritage', 'outdoor', 'cultural', 'entertainment', 'dining', 'shopping',
+        'nightlife', 'family', 'romantic', 'budget', 'luxury', 'hidden gems'
+      ];
+      
+      const hasGenericContent = genericContent.some(generic => 
+        text.toLowerCase().includes(generic.toLowerCase())
+      );
+      
+      // Additional checks for generic content
+      const isGenericList = text.toLowerCase().includes('best things') || 
+                           text.toLowerCase().includes('top things') ||
+                           text.toLowerCase().includes('attractions that should be') ||
+                           text.toLowerCase().includes('locals and tourists') ||
+                           text.toLowerCase().includes('experience the absolute best') ||
+                           text.toLowerCase().includes('discover the new york attractions') ||
+                           text.toLowerCase().includes('locals love including') ||
+                           text.toLowerCase().includes('complete guide to') ||
+                           text.toLowerCase().includes('ultimate guide to') ||
+                           text.toLowerCase().includes('everything you need to know') ||
+                           text.toLowerCase().includes('must-see attractions') ||
+                           text.toLowerCase().includes('must-visit places') ||
+                           text.toLowerCase().includes('best of nyc') ||
+                           text.toLowerCase().includes('top attractions') ||
+                           text.toLowerCase().includes('nyc attractions') ||
+                           text.toLowerCase().includes('new york attractions');
+      
       if (text.length > 50 && text.length < 2000 && 
-          !text.includes('Search') && !text.includes('Menu') && 
-          !text.includes('Navigation') && !text.includes('Footer') &&
-          !text.includes('Park Features') && !text.includes('Activities & Amenities') &&
+          !hasGenericContent && !isGenericList &&
           (text.includes('PM') || text.includes('AM') || text.includes('Free') || text.includes('$') || 
            text.includes('Event') || text.includes('Class') || text.includes('Workshop') || 
-           text.includes('Concert') || text.includes('Exhibition') || text.includes('Tour'))) {
+           text.includes('Concert') || text.includes('Exhibition') || text.includes('Tour') ||
+           text.includes('Show') || text.includes('Performance') || text.includes('Lecture') ||
+           text.includes('Workshop') || text.includes('Seminar') || text.includes('Meetup'))) {
         events.push(text);
       }
     });
     
     console.log(`Successfully extracted ${events.length} events from NYC Parks`);
-    return events.slice(0, 5); // Limit to 5 events
+    return events.slice(0, 15); // Limit to 15 events
     
   } catch (error) {
     console.error('Error scraping NYC Parks:', error.message);
@@ -154,13 +225,57 @@ async function scrapeBrooklynMuseum() {
       const $element = $(element);
       const text = $element.text().trim();
       
-      if (text.length > 50 && text.length < 2000) {
+      // Better filtering for actual event content - exclude generic lists and guides
+      const genericContent = [
+        'Things to do', 'Best things', 'Top things', 'Guide to', 'Complete guide',
+        'Ultimate guide', 'Everything you need', 'Must-see', 'Must-visit',
+        'Local guide', 'Tourist guide', 'Visitor guide', 'NYC guide',
+        'Activities & Amenities', 'Park Features', 'Search', 'Menu', 'Navigation', 'Footer',
+        '100 best', '80 best', '50 best', '25 best', '10 best', '5 best',
+        'attractions that should be on your list', 'locals and tourists',
+        'Experience the absolute best', 'Discover the New York attractions',
+        'locals love including', 'Complete guide to', 'Ultimate guide to',
+        'Everything you need to know', 'Must-see attractions', 'Must-visit places',
+        'Best of NYC', 'Top attractions', 'NYC attractions', 'New York attractions',
+        'heritage', 'outdoor', 'cultural', 'entertainment', 'dining', 'shopping',
+        'nightlife', 'family', 'romantic', 'budget', 'luxury', 'hidden gems'
+      ];
+      
+      const hasGenericContent = genericContent.some(generic => 
+        text.toLowerCase().includes(generic.toLowerCase())
+      );
+      
+      // Additional checks for generic content
+      const isGenericList = text.toLowerCase().includes('best things') || 
+                           text.toLowerCase().includes('top things') ||
+                           text.toLowerCase().includes('attractions that should be') ||
+                           text.toLowerCase().includes('locals and tourists') ||
+                           text.toLowerCase().includes('experience the absolute best') ||
+                           text.toLowerCase().includes('discover the new york attractions') ||
+                           text.toLowerCase().includes('locals love including') ||
+                           text.toLowerCase().includes('complete guide to') ||
+                           text.toLowerCase().includes('ultimate guide to') ||
+                           text.toLowerCase().includes('everything you need to know') ||
+                           text.toLowerCase().includes('must-see attractions') ||
+                           text.toLowerCase().includes('must-visit places') ||
+                           text.toLowerCase().includes('best of nyc') ||
+                           text.toLowerCase().includes('top attractions') ||
+                           text.toLowerCase().includes('nyc attractions') ||
+                           text.toLowerCase().includes('new york attractions');
+      
+      if (text.length > 50 && text.length < 2000 && 
+          !hasGenericContent && !isGenericList &&
+          (text.includes('PM') || text.includes('AM') || text.includes('Free') || text.includes('$') || 
+           text.includes('Event') || text.includes('Class') || text.includes('Workshop') || 
+           text.includes('Concert') || text.includes('Exhibition') || text.includes('Tour') ||
+           text.includes('Show') || text.includes('Performance') || text.includes('Lecture') ||
+           text.includes('Workshop') || text.includes('Seminar') || text.includes('Meetup'))) {
         events.push(text);
       }
     });
     
     console.log(`Successfully extracted ${events.length} events from Brooklyn Museum`);
-    return events.slice(0, 5); // Limit to 5 events
+    return events.slice(0, 15); // Limit to 15 events
     
   } catch (error) {
     console.error('Error scraping Brooklyn Museum:', error.message);
@@ -226,7 +341,7 @@ async function scrapeCentralPark() {
     });
     
     console.log(`Successfully extracted ${events.length} events from Central Park`);
-    return events.slice(0, 5); // Limit to 5 events
+    return events.slice(0, 15); // Limit to 15 events
     
   } catch (error) {
     console.error('Error scraping Central Park:', error.message);
@@ -292,7 +407,7 @@ async function scrapeNYCPublicLibrary() {
     });
     
     console.log(`Successfully extracted ${events.length} events from NYC Public Library`);
-    return events.slice(0, 5); // Limit to 5 events
+    return events.slice(0, 15); // Limit to 15 events
     
   } catch (error) {
     console.error('Error scraping NYC Public Library:', error.message);
@@ -365,7 +480,7 @@ async function scrapeTimeOutNYC() {
     });
     
     console.log(`Successfully extracted ${events.length} events from Time Out NYC`);
-    return events.slice(0, 5); // Limit to 5 events
+    return events.slice(0, 15); // Limit to 15 events
     
   } catch (error) {
     console.error('Error scraping Time Out NYC:', error.message);
@@ -399,7 +514,7 @@ async function scrapeNYCGo() {
       }
     });
     
-    return events.slice(0, 10); // Limit to 10 events
+    return events.slice(0, 15); // Limit to 15 events
   } catch (error) {
     console.error('Error scraping NYC Go:', error.message);
     return [];
@@ -471,10 +586,83 @@ async function scrapeEventbriteNYC() {
     });
     
     console.log(`Successfully extracted ${events.length} events from Eventbrite NYC`);
-    return events.slice(0, 5); // Limit to 5 events
+    return events.slice(0, 15); // Limit to 15 events
     
   } catch (error) {
     console.error('Error scraping Eventbrite NYC:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Scrapes free food and drink events from Eventbrite NYC
+ * @returns {Promise<Array<string>>} Array of raw event text blobs
+ */
+async function scrapeEventbriteFreeFood() {
+  try {
+    console.log('Fetching free food events from Eventbrite NYC...');
+    
+    const response = await axios.get('https://www.eventbrite.com/d/ny--new-york/free--food-and-drink--events/', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
+      },
+      timeout: 15000
+    });
+    
+    const $ = cheerio.load(response.data);
+    const events = [];
+    
+    // Look for event listings with more specific selectors
+    const eventSelectors = [
+      '.event-card',
+      '.listing-card',
+      '.event',
+      '.card',
+      '.event-item',
+      '.listing-item',
+      'article',
+      '.event-listing'
+    ];
+    
+    let eventElements = $();
+    
+    for (const selector of eventSelectors) {
+      eventElements = $(selector);
+      if (eventElements.length > 0) {
+        console.log(`Found ${eventElements.length} events using selector: ${selector}`);
+        break;
+      }
+    }
+    
+    // If no specific selectors work, look for content that looks like events
+    if (eventElements.length === 0) {
+      eventElements = $('div, article, section').filter((i, el) => {
+        const text = $(el).text().toLowerCase();
+        return (text.includes('pm') || text.includes('am') || text.includes('free') || text.includes('$')) &&
+               (text.includes('food') || text.includes('drink') || text.includes('tasting') || text.includes('cooking') || text.includes('wine') || text.includes('beer')) &&
+               text.length > 100 && text.length < 2000;
+      });
+    }
+    
+    eventElements.each((index, element) => {
+      const $element = $(element);
+      const text = $element.text().trim();
+      
+      if (text.length > 50 && text.length < 2000) {
+        events.push(text);
+      }
+    });
+    
+    console.log(`Successfully extracted ${events.length} events from Eventbrite Free Food`);
+    return events.slice(0, 15); // Limit to 15 events
+    
+  } catch (error) {
+    console.error('Error scraping Eventbrite Free Food:', error.message);
     return [];
   }
 }
@@ -519,6 +707,8 @@ module.exports = {
   scrapeCentralPark, 
   scrapeNYCPublicLibrary, 
   scrapeTimeOutNYC, 
-  scrapeEventbriteNYC 
+  scrapeNYCGo,
+  scrapeEventbriteNYC,
+  scrapeEventbriteFreeFood
 };
 

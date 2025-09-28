@@ -8,8 +8,10 @@ interface Event {
   lng: number;
   address: string;
   time: string;
+  date: string;
   price: string;
   description: string;
+  website?: string | null;
 }
 
 interface EventModalProps {
@@ -83,6 +85,18 @@ const EventModal: React.FC<EventModalProps> = ({ event, isOpen, onClose }) => {
           {/* Event Details */}
           <div className="space-y-4">
             <div className="flex items-center gap-3 text-gray-600">
+              <span className="text-lg">📅</span>
+              <span className="font-medium">
+                {event.date ? new Date(event.date).toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                }) : 'Date TBD'}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3 text-gray-600">
               <span className="text-lg">🕐</span>
               <span className="font-medium">{event.time}</span>
             </div>
@@ -96,6 +110,20 @@ const EventModal: React.FC<EventModalProps> = ({ event, isOpen, onClose }) => {
               <span className="text-lg mt-0.5">📍</span>
               <span className="font-medium">{event.address}</span>
             </div>
+            
+            {event.website && (
+              <div className="flex items-center gap-3 text-gray-600">
+                <span className="text-lg">🌐</span>
+                <a 
+                  href={event.website} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                >
+                  Visit Event Website
+                </a>
+              </div>
+            )}
             
             <div className="pt-4 border-t border-gray-200">
               <h3 className="font-semibold text-gray-900 mb-2">About this event</h3>

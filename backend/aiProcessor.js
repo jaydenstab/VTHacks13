@@ -1,3 +1,6 @@
+// Load environment variables
+require('dotenv').config();
+
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Initialize the Gemini AI client
@@ -10,12 +13,63 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  */
 async function extractEventData(rawText) {
   try {
+    // Pre-filter generic content that shouldn't be processed as events
+    const genericContentPatterns = [
+      'things to do',
+      'best things',
+      'top things',
+      'guide to',
+      'complete guide',
+      'ultimate guide',
+      'everything you need',
+      'must-see',
+      'must-visit',
+      'local guide',
+      'tourist guide',
+      'visitor guide',
+      'nyc guide',
+      '100 best',
+      '80 best',
+      '50 best',
+      '25 best',
+      '10 best',
+      '5 best',
+      'attractions that should be on your list',
+      'locals and tourists',
+      'experience the absolute best',
+      'discover the new york attractions',
+      'locals love including',
+      'complete guide to',
+      'ultimate guide to',
+      'everything you need to know',
+      'must-see attractions',
+      'must-visit places',
+      'best of nyc',
+      'top attractions',
+      'nyc attractions',
+      'new york attractions'
+    ];
+    
+    const hasGenericContent = genericContentPatterns.some(pattern => 
+      rawText.toLowerCase().includes(pattern.toLowerCase())
+    );
+    
+    if (hasGenericContent) {
+      console.log('❌ Skipping generic content that is not a real event');
+      return null; // Return null to indicate this should be filtered out
+    }
+    
+    // Special handling for Hamilton events to preserve multiple events
+    if (rawText.includes('Hamilton') && rawText.includes('Richard Rodgers Theatre')) {
+      return extractHamiltonEventData(rawText);
+    }
+    
     if (!process.env.GEMINI_API_KEY) {
       console.warn('GEMINI_API_KEY not found, using fallback extraction');
       return extractEventDataFallback(rawText);
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
     const prompt = `You are an expert event data extractor for NYC events. From the following text, extract structured event information.
 
@@ -30,6 +84,15 @@ REQUIREMENTS:
 8. Focus on REAL events happening in NYC - avoid generic or fake events
 9. If the text contains multiple events, extract the first/main event only
 10. Ensure all data is realistic and current
+
+IMPORTANT: REJECT any content that appears to be:
+- Generic "things to do" lists or guides
+- "Best of NYC" or "Top attractions" content
+- Tourist guides or general recommendations
+- Content like "100 best things to do", "80 best attractions", etc.
+- Generic categories like "heritage", "outdoor", "cultural" without specific event details
+
+Only extract actual events with specific dates, times, and locations.
 
 Text to analyze:
 ${rawText}
@@ -83,10 +146,51 @@ No additional text or formatting.`;
   } catch (error) {
     console.error('Error in AI processing:', error.message);
     console.log('Raw text that failed:', rawText);
+    console.log('Falling back to text-based extraction...');
     
     // Fallback to rule-based extraction
     return extractEventDataFallback(rawText);
   }
+}
+
+/**
+ * Special extraction for Hamilton events to preserve multiple events
+ * @param {string} rawText - Raw text containing Hamilton event information
+ * @returns {Object} Structured event data object
+ */
+function extractHamiltonEventData(rawText) {
+  // Extract date and time from the text
+  const dateMatch = rawText.match(/Date:\s*([^\n]+)/);
+  const timeMatch = rawText.match(/Time:\s*([^\n]+)/);
+  
+  const date = dateMatch ? dateMatch[1].trim() : 'TBD';
+  const time = timeMatch ? timeMatch[1].trim() : 'TBD';
+  
+  // Convert date to proper format if possible
+  let formattedDate = date;
+  if (date !== 'TBD') {
+    try {
+      // Handle formats like "Sep 28", "Oct 1", etc.
+      const currentYear = new Date().getFullYear();
+      const dateObj = new Date(`${date} ${currentYear}`);
+      if (!isNaN(dateObj.getTime())) {
+        formattedDate = dateObj.toISOString().split('T')[0];
+      }
+    } catch (error) {
+      // Keep original date if conversion fails
+    }
+  }
+  
+  return {
+    eventName: 'Hamilton',
+    address: 'Richard Rodgers Theatre, 226 W 46th St, New York, NY 10036',
+    startTime: time,
+    date: formattedDate,
+    price: 'Check website for pricing',
+    category: 'Theater',
+    description: 'Hamilton - Richard Rodgers Theatre - Broadway musical about Alexander Hamilton',
+    website: 'https://www.eventticketscenter.com/hamilton-new-york-tickets/'
+  };
 }
 
 /**
@@ -95,6 +199,52 @@ No additional text or formatting.`;
  * @returns {Object} Structured event data object
  */
 function extractEventDataFallback(rawText) {
+  // Pre-filter generic content in fallback as well
+  const genericContentPatterns = [
+    'things to do',
+    'best things',
+    'top things',
+    'guide to',
+    'complete guide',
+    'ultimate guide',
+    'everything you need',
+    'must-see',
+    'must-visit',
+    'local guide',
+    'tourist guide',
+    'visitor guide',
+    'nyc guide',
+    '100 best',
+    '80 best',
+    '50 best',
+    '25 best',
+    '10 best',
+    '5 best',
+    'attractions that should be on your list',
+    'locals and tourists',
+    'experience the absolute best',
+    'discover the new york attractions',
+    'locals love including',
+    'complete guide to',
+    'ultimate guide to',
+    'everything you need to know',
+    'must-see attractions',
+    'must-visit places',
+    'best of nyc',
+    'top attractions',
+    'nyc attractions',
+    'new york attractions'
+  ];
+  
+  const hasGenericContent = genericContentPatterns.some(pattern => 
+    rawText.toLowerCase().includes(pattern.toLowerCase())
+  );
+  
+  if (hasGenericContent) {
+    console.log('❌ Fallback: Skipping generic content that is not a real event');
+    return null; // Return null to indicate this should be filtered out
+  }
+  
   const lines = rawText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
   
   let eventName = 'Unknown Event';
@@ -103,6 +253,61 @@ function extractEventDataFallback(rawText) {
   let price = 'Unknown';
   let category = 'Other';
   let description = rawText;
+  
+  // Detect category based on keywords in the text
+  const categoryKeywords = {
+    'Sports': ['run', 'running', 'race', 'marathon', 'fitness', 'workout', 'exercise', 'sports', 'athletic', 'training'],
+    'Health': ['health', 'wellness', 'yoga', 'meditation', 'fitness', 'wellness', 'healthcare', 'medical'],
+    'Education': ['workshop', 'class', 'learning', 'education', 'seminar', 'lecture', 'training', 'course', 'study'],
+    'Art': ['art', 'exhibition', 'gallery', 'museum', 'painting', 'sculpture', 'creative', 'artistic', 'cultural'],
+    'Music': ['music', 'concert', 'performance', 'band', 'singer', 'musical', 'orchestra', 'jazz', 'rock', 'classical'],
+    'Theater': ['theater', 'theatre', 'broadway', 'play', 'drama', 'show', 'performance', 'stage', 'hamilton'],
+    'Food': ['food', 'restaurant', 'dining', 'cuisine', 'cooking', 'chef', 'culinary', 'taste', 'eat', 'drink'],
+    'Community': ['community', 'volunteer', 'charity', 'fundraising', 'social', 'meetup', 'networking', 'local'],
+    'Free': ['free', 'complimentary', 'no cost', 'gratis', 'donation', 'volunteer']
+  };
+  
+  const lowerText = rawText.toLowerCase();
+  for (const [cat, keywords] of Object.entries(categoryKeywords)) {
+    if (keywords.some(keyword => lowerText.includes(keyword))) {
+      category = cat;
+      break;
+    }
+  }
+  
+  // Try to create a better description from the raw text
+  if (rawText && rawText.length > 50) {
+    // Extract meaningful description parts
+    const descParts = [];
+    
+    // Look for description patterns
+    const descPatterns = [
+      /(?:NYRR|Brooklyn|Queens|Manhattan|Bronx|Staten Island)([^]+?)(?:Category|Free!|Must See|Event)/i,
+      /(?:Free!|Must See|Event)([^]+?)(?:Category|$)/i,
+      /(?:brings|offers|features|includes)([^]+?)(?:Category|Free!|Must See|Event)/i
+    ];
+    
+    for (const pattern of descPatterns) {
+      const match = rawText.match(pattern);
+      if (match && match[1]) {
+        const desc = match[1].trim();
+        if (desc.length > 10 && desc.length < 200) {
+          descParts.push(desc);
+        }
+      }
+    }
+    
+    // If we found description parts, use them
+    if (descParts.length > 0) {
+      description = descParts.join(' ').trim();
+    } else {
+      // Fallback: use the raw text but clean it up
+      description = rawText
+        .replace(/\s+/g, ' ')
+        .replace(/[^a-zA-Z0-9\s\-.,!?]/g, '')
+        .trim();
+    }
+  }
   
   // Try to extract event name by looking for patterns in the text
   // Look for text that appears to be an event title
@@ -117,21 +322,57 @@ function extractEventDataFallback(rawText) {
     /([^]+?)(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s*•/,
     // Look for text before time patterns
     /([^•]+)•/,
+    // Look for text before location patterns (for scraped content)
+    /([^]+?)(?:at\s+[A-Za-z\s]+(?:Park|Museum|Library|Square|Bridge|Avenue|Street|Boulevard|Road|Drive|Place|Court|Lane|Parkway))/,
+    // Look for text before time patterns like "9:00 a.m."
+    /([^]+?)(?:\d{1,2}:\d{2}\s*(?:a\.m\.|p\.m\.|AM|PM))/,
+    // Look for text before "Free!" or price indicators
+    /([^]+?)(?:Free!|Must See|Event)/,
+    // Look for text before "at" or "in" location indicators
+    /([^]+?)(?:at\s+[A-Za-z\s]+(?:Park|Museum|Library|Square|Bridge|Avenue|Street|Boulevard|Road|Drive|Place|Court|Lane|Parkway))/,
+    // Look for text before time indicators
+    /([^]+?)(?:\d{1,2}:\d{2}\s*(?:a\.m\.|p\.m\.|AM|PM))/,
+    // Look for text before "Category:" or similar indicators
+    /([^]+?)(?:Category:|Free!|Must See|Event)/
   ];
   
   for (const pattern of eventNamePatterns) {
     const match = rawText.match(pattern);
     if (match && match[1]) {
       const candidate = match[1].trim();
-      if (candidate.length > 5 && candidate.length < 200 && 
-          !candidate.includes('Check ticket') &&
-          !candidate.includes('Save this event') &&
-          !candidate.includes('Share this event') &&
-          !candidate.includes('Almost full') &&
-          !candidate.includes('Going fast') &&
-          !candidate.includes('PM') &&
-          !candidate.includes('AM')) {
-        eventName = candidate;
+      
+      // Clean up the candidate name
+      let cleanCandidate = candidate
+        .replace(/\s+/g, ' ')  // Replace multiple spaces with single space
+        .replace(/^[^a-zA-Z]*/, '')  // Remove leading non-alphabetic characters
+        .replace(/[^a-zA-Z0-9\s\-&]+$/, '')  // Remove trailing non-alphanumeric characters
+        .replace(/\s*-\s*$/, '')  // Remove trailing dashes and spaces
+        .replace(/\s*–\s*$/, '')  // Remove trailing en-dashes and spaces
+        .trim();
+      
+      // Remove date prefixes like "Sep28", "Oct15", etc.
+      cleanCandidate = cleanCandidate.replace(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\d{1,2}/, '');
+      
+      // Remove common prefixes and clean up
+      cleanCandidate = cleanCandidate
+        .replace(/^(NYRR|NYC|NY)\s*/i, '')  // Remove NYRR, NYC, NY prefixes
+        .replace(/^(Open Run|Run|Running)\s*/i, '')  // Remove common running prefixes
+        .replace(/:\s*$/, '')  // Remove trailing colons
+        .trim();
+      
+      if (cleanCandidate.length > 5 && cleanCandidate.length < 200 && 
+          !cleanCandidate.includes('Check ticket') &&
+          !cleanCandidate.includes('Save this event') &&
+          !cleanCandidate.includes('Share this event') &&
+          !cleanCandidate.includes('Almost full') &&
+          !cleanCandidate.includes('Going fast') &&
+          !cleanCandidate.includes('PM') &&
+          !cleanCandidate.includes('AM') &&
+          !cleanCandidate.includes('Category:') &&
+          !cleanCandidate.includes('Free!') &&
+          !cleanCandidate.includes('Must See') &&
+          !cleanCandidate.includes('Event')) {
+        eventName = cleanCandidate;
         break;
       }
     }
@@ -169,6 +410,43 @@ function extractEventDataFallback(rawText) {
           !line.includes('Going fast')) {
         eventName = line.substring(0, 100); // Limit length
         break;
+      }
+    }
+  }
+  
+  // Special handling for scraped content that has date embedded in name
+  if (eventName === 'Unknown Event' && rawText.length > 0) {
+    // Look for patterns like "Sep28Event Name" or "Sep 28 Event Name"
+    const dateNamePattern = /^([A-Za-z]{3}\d{1,2})([A-Za-z\s]+?)(?:\s+at\s+|\s+in\s+|\s+–\s+|\s+\d{1,2}:\d{2})/;
+    const match = rawText.match(dateNamePattern);
+    if (match && match[2]) {
+      eventName = match[2].trim();
+      // Extract the date part
+      const datePart = match[1];
+      // Convert abbreviated month to full month
+      const monthMap = {
+        'Jan': 'January', 'Feb': 'February', 'Mar': 'March', 'Apr': 'April',
+        'May': 'May', 'Jun': 'June', 'Jul': 'July', 'Aug': 'August',
+        'Sep': 'September', 'Oct': 'October', 'Nov': 'November', 'Dec': 'December'
+      };
+      const month = monthMap[datePart.substring(0, 3)];
+      const day = datePart.substring(3);
+      if (month && day) {
+        const currentYear = new Date().getFullYear();
+        const dateString = `${month} ${day}, ${currentYear}`;
+        const parsedDate = new Date(dateString);
+        
+        // If the date is in the past, assume it's next year
+        if (!isNaN(parsedDate.getTime()) && parsedDate < new Date()) {
+          const nextYear = currentYear + 1;
+          const nextYearDateString = `${month} ${day}, ${nextYear}`;
+          const nextYearDate = new Date(nextYearDateString);
+          if (!isNaN(nextYearDate.getTime())) {
+            date = nextYearDate.toISOString().split('T')[0];
+          }
+        } else if (!isNaN(parsedDate.getTime())) {
+          date = parsedDate.toISOString().split('T')[0];
+        }
       }
     }
   }
@@ -213,11 +491,24 @@ function extractEventDataFallback(rawText) {
     }
   }
   
-  // Try to extract time (look for PM/AM patterns)
-  const timePattern = /\d{1,2}:\d{2}\s*(?:AM|PM)/i;
-  const timeMatch = rawText.match(timePattern);
-  if (timeMatch) {
-    startTime = timeMatch[0];
+  // Try to extract time (look for various time patterns)
+  const timePatterns = [
+    // Standard 12-hour format
+    /\d{1,2}:\d{2}\s*(?:AM|PM)/i,
+    // With periods
+    /\d{1,2}:\d{2}\s*(?:a\.m\.|p\.m\.)/i,
+    // Time ranges
+    /\d{1,2}:\d{2}\s*(?:a\.m\.|p\.m\.)–\d{1,2}:\d{2}\s*(?:a\.m\.|p\.m\.)/i,
+    // 24-hour format
+    /\d{1,2}:\d{2}\s*(?:\d{1,2}:\d{2})?/
+  ];
+  
+  for (const pattern of timePatterns) {
+    const timeMatch = rawText.match(pattern);
+    if (timeMatch) {
+      startTime = timeMatch[0];
+      break;
+    }
   }
   
   // Try to extract price
@@ -231,17 +522,57 @@ function extractEventDataFallback(rawText) {
     }
   }
   
-  // Categorize based on keywords
-  const lowerText = rawText.toLowerCase();
-  if (lowerText.includes('jazz') || lowerText.includes('music') || lowerText.includes('concert') || lowerText.includes('band')) {
+  
+  // Categorize based on keywords (using existing lowerText variable)
+  if (lowerText.includes('free') && (lowerText.includes('food') || lowerText.includes('meal') || lowerText.includes('kitchen') || lowerText.includes('distribution'))) {
+    category = 'Free Food';
+  } else if (lowerText.includes('influencer') || lowerText.includes('content creator') || lowerText.includes('social media') || lowerText.includes('instagram') || lowerText.includes('tiktok') || lowerText.includes('youtube')) {
+    category = 'Influencers';
+  } else if (lowerText.includes('heritage') || lowerText.includes('cultural') || lowerText.includes('tradition') || lowerText.includes('history') || lowerText.includes('museum') || lowerText.includes('tour')) {
+    category = 'Heritage';
+  } else if (lowerText.includes('sports') || lowerText.includes('basketball') || lowerText.includes('football') || lowerText.includes('soccer') || lowerText.includes('tennis') || lowerText.includes('baseball') || lowerText.includes('running') || lowerText.includes('marathon') || lowerText.includes('fitness')) {
+    category = 'Sports';
+  } else if (lowerText.includes('education') || lowerText.includes('class') || lowerText.includes('course') || lowerText.includes('learning') || lowerText.includes('workshop') || lowerText.includes('seminar') || lowerText.includes('lecture')) {
+    category = 'Education';
+  } else if (lowerText.includes('health') || lowerText.includes('wellness') || lowerText.includes('yoga') || lowerText.includes('meditation') || lowerText.includes('fitness') || lowerText.includes('gym') || lowerText.includes('therapy')) {
+    category = 'Health & Wellness';
+  } else if (lowerText.includes('technology') || lowerText.includes('tech') || lowerText.includes('coding') || lowerText.includes('programming') || lowerText.includes('startup') || lowerText.includes('ai') || lowerText.includes('blockchain')) {
+    category = 'Technology';
+  } else if (lowerText.includes('business') || lowerText.includes('networking') || lowerText.includes('entrepreneur') || lowerText.includes('startup') || lowerText.includes('conference') || lowerText.includes('meeting')) {
+    category = 'Business';
+  } else if (lowerText.includes('theater') || lowerText.includes('theatre') || lowerText.includes('play') || lowerText.includes('drama') || lowerText.includes('broadway') || lowerText.includes('musical')) {
+    category = 'Theater';
+  } else if (lowerText.includes('entertainment') || lowerText.includes('show') || lowerText.includes('performance') || lowerText.includes('circus') || lowerText.includes('magic')) {
+    category = 'Entertainment';
+  } else if (lowerText.includes('community') || lowerText.includes('volunteer') || lowerText.includes('charity') || lowerText.includes('fundraiser') || lowerText.includes('social')) {
+    category = 'Community';
+  } else if (lowerText.includes('workshop') || lowerText.includes('class') || lowerText.includes('training') || lowerText.includes('skill') || lowerText.includes('craft')) {
+    category = 'Workshop';
+  } else if (lowerText.includes('tour') || lowerText.includes('walking') || lowerText.includes('guided') || lowerText.includes('explore') || lowerText.includes('sightseeing')) {
+    category = 'Tour';
+  } else if (lowerText.includes('outdoor') || lowerText.includes('park') || lowerText.includes('hiking') || lowerText.includes('camping') || lowerText.includes('nature')) {
+    category = 'Outdoor';
+  } else if (lowerText.includes('family') || lowerText.includes('kids') || lowerText.includes('children') || lowerText.includes('parent') || lowerText.includes('child-friendly')) {
+    category = 'Family';
+  } else if (lowerText.includes('nightlife') || lowerText.includes('club') || lowerText.includes('bar') || lowerText.includes('party') || lowerText.includes('dance') || lowerText.includes('night')) {
+    category = 'Nightlife';
+  } else if (lowerText.includes('shopping') || lowerText.includes('market') || lowerText.includes('store') || lowerText.includes('retail') || lowerText.includes('sale')) {
+    category = 'Shopping';
+  } else if (lowerText.includes('fashion') || lowerText.includes('style') || lowerText.includes('clothing') || lowerText.includes('design') || lowerText.includes('runway')) {
+    category = 'Fashion';
+  } else if (lowerText.includes('photography') || lowerText.includes('photo') || lowerText.includes('camera') || lowerText.includes('picture') || lowerText.includes('shoot')) {
+    category = 'Photography';
+  } else if (lowerText.includes('gaming') || lowerText.includes('game') || lowerText.includes('esports') || lowerText.includes('video game') || lowerText.includes('arcade')) {
+    category = 'Gaming';
+  } else if (lowerText.includes('jazz') || lowerText.includes('music') || lowerText.includes('concert') || lowerText.includes('band') || lowerText.includes('song') || lowerText.includes('album')) {
     category = 'Music';
-  } else if (lowerText.includes('art') || lowerText.includes('gallery') || lowerText.includes('exhibition')) {
+  } else if (lowerText.includes('art') || lowerText.includes('gallery') || lowerText.includes('exhibition') || lowerText.includes('painting') || lowerText.includes('sculpture')) {
     category = 'Art';
-  } else if (lowerText.includes('food') || lowerText.includes('restaurant') || lowerText.includes('drink') || lowerText.includes('bar')) {
+  } else if (lowerText.includes('food') || lowerText.includes('restaurant') || lowerText.includes('drink') || lowerText.includes('bar') || lowerText.includes('cuisine') || lowerText.includes('dining')) {
     category = 'Food & Drink';
-  } else if (lowerText.includes('comedy') || lowerText.includes('stand-up') || lowerText.includes('joke')) {
+  } else if (lowerText.includes('comedy') || lowerText.includes('stand-up') || lowerText.includes('joke') || lowerText.includes('laugh') || lowerText.includes('humor')) {
     category = 'Comedy';
-  } else if (lowerText.includes('free') && !lowerText.includes('free')) {
+  } else if (lowerText.includes('free')) {
     category = 'Free';
   }
   
@@ -273,13 +604,53 @@ function extractEventDataFallback(rawText) {
     }
   }
   
+  // Try to extract date from the text
+  let date = null;
+  const datePatterns = [
+    // YYYY-MM-DD format
+    /\d{4}-\d{2}-\d{2}/,
+    // MM/DD/YYYY format
+    /\d{1,2}\/\d{1,2}\/\d{4}/,
+    // Month DD, YYYY format
+    /(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}/i,
+    // DD Month YYYY format
+    /\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}/i,
+    // Month DD format (current year)
+    /(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}/i,
+    // DD Month format (current year)
+    /\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)/i,
+    // Abbreviated month formats
+    /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}/i,
+    // Day of week patterns
+    /(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i
+  ];
+  
+  for (const pattern of datePatterns) {
+    const match = rawText.match(pattern);
+    if (match) {
+      const parsedDate = new Date(match[0]);
+      if (!isNaN(parsedDate.getTime())) {
+        date = parsedDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        break;
+      }
+    }
+  }
+  
+  // If no date found, use a future date (tomorrow)
+  if (!date) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    date = tomorrow.toISOString().split('T')[0];
+  }
+
   return {
     eventName,
     address,
     startTime,
+    date,
     price,
     category,
-    description: rawText.substring(0, 200) + (rawText.length > 200 ? '...' : '')
+    description: rawText.length > 500 ? rawText.substring(0, 500) + '...' : rawText
   };
 }
 
