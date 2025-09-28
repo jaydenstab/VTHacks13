@@ -127,7 +127,7 @@ const App: React.FC = () => {
           console.log('Initializing map...');
           map.current = new mapboxgl.Map({
             container: mapContainer.current,
-            style: 'mapbox://styles/mapbox/light-v11',
+            style: 'mapbox://styles/mapbox/standard', // Use standard style for 3D features
             center: [-73.935242, 40.730610],
             zoom: 10,
             pitch: 45,
@@ -136,6 +136,35 @@ const App: React.FC = () => {
 
           map.current.on('load', () => {
             console.log('Map loaded successfully');
+            
+            // Add 3D terrain if available
+            try {
+              map.current.addSource('mapbox-dem', {
+                'type': 'raster-dem',
+                'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                'tileSize': 512,
+                'maxzoom': 14
+              });
+              
+              // Add terrain layer
+              map.current.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
+              
+              // Add sky layer for better 3D effect
+              map.current.addLayer({
+                'id': 'sky',
+                'type': 'sky',
+                'paint': {
+                  'sky-type': 'atmosphere',
+                  'sky-atmosphere-sun': [0.0, 0.0],
+                  'sky-atmosphere-sun-intensity': 15
+                }
+              });
+              
+              console.log('3D terrain and sky added successfully');
+            } catch (error) {
+              console.log('3D features not available, using standard map');
+            }
+            
             addMarkersToMap();
             // Apply initial light preset
             applyLightPreset();
@@ -187,23 +216,92 @@ const App: React.FC = () => {
     if (!map.current) return;
     
     try {
-      // Apply light preset using Mapbox's setConfigProperty
+      // Keep the standard style but apply lighting and atmospheric changes
+      console.log(`Applying light preset: ${lightPreset}`);
+      
+      // Apply light preset using setConfigProperty
       map.current.setConfigProperty('basemap', 'lightPreset', lightPreset);
-      console.log(`Applied light preset: ${lightPreset}`);
+      
+      // Update sky layer with different sun positions and intensities
+      if (map.current.getLayer('sky')) {
+        const sunPositions = {
+          'dawn': [45.0, 0.0],      // Sun rising in the east
+          'day': [0.0, 0.0],        // Sun at noon
+          'dusk': [-45.0, 0.0],     // Sun setting in the west  
+          'night': [0.0, -90.0]     // Sun below horizon
+        };
+        
+        const sunIntensities = {
+          'dawn': 8,
+          'day': 15,
+          'dusk': 6,
+          'night': 2
+        };
+        
+        const sunPosition = sunPositions[lightPreset as keyof typeof sunPositions] || [0.0, 0.0];
+        const sunIntensity = sunIntensities[lightPreset as keyof typeof sunIntensities] || 15;
+        
+        map.current.setPaintProperty('sky', 'sky-atmosphere-sun', sunPosition);
+        map.current.setPaintProperty('sky', 'sky-atmosphere-sun-intensity', sunIntensity);
+        
+        console.log(`Updated sky: sun position ${sunPosition}, intensity ${sunIntensity}`);
+      }
+      
+      // Apply additional visual effects based on preset
+      const container = map.current.getContainer();
+      container.style.transition = 'filter 0.5s ease';
+      
+      switch (lightPreset) {
+        case 'dawn':
+          container.style.filter = 'brightness(0.9) saturate(1.1) hue-rotate(15deg)';
+          break;
+        case 'day':
+          container.style.filter = 'brightness(1) saturate(1)';
+          break;
+        case 'dusk':
+          container.style.filter = 'brightness(0.7) saturate(1.2) hue-rotate(-15deg)';
+          break;
+        case 'night':
+          container.style.filter = 'brightness(0.4) saturate(0.8) hue-rotate(-30deg)';
+          break;
+        default:
+          container.style.filter = 'brightness(1) saturate(1)';
+      }
+      
+      console.log(`Applied light preset: ${lightPreset} with visual effects`);
+      
     } catch (error) {
       console.error('Error applying light preset:', error);
-      // Fallback: try to set the style based on light preset
+      
+      // Fallback: try different styles only if setConfigProperty fails
       const styleMap = {
         'dawn': 'mapbox://styles/mapbox/light-v11',
-        'day': 'mapbox://styles/mapbox/light-v11',
+        'day': 'mapbox://styles/mapbox/light-v11', 
         'dusk': 'mapbox://styles/mapbox/dark-v11',
         'night': 'mapbox://styles/mapbox/dark-v11'
       };
       
-      const newStyle = styleMap[lightPreset as keyof typeof styleMap] || 'mapbox://styles/mapbox/light-v11';
+      const newStyle = styleMap[lightPreset as keyof typeof styleMap] || 'mapbox://styles/mapbox/standard';
+      
       if (map.current.getStyle().name !== newStyle) {
+        console.log(`Fallback: changing to style ${newStyle}`);
         map.current.setStyle(newStyle);
-        console.log(`Applied fallback style: ${newStyle}`);
+        
+        map.current.once('styledata', () => {
+          // Re-add 3D features
+          try {
+            map.current.addSource('mapbox-dem', {
+              'type': 'raster-dem',
+              'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+              'tileSize': 512,
+              'maxzoom': 14
+            });
+            map.current.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
+            addMarkersToMap();
+          } catch (e) {
+            console.log('Could not re-add 3D features in fallback');
+          }
+        });
       }
     }
   };
@@ -691,7 +789,7 @@ const App: React.FC = () => {
             height: '60px',
             borderRadius: '30px',
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            border: 'none',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -700,8 +798,7 @@ const App: React.FC = () => {
             color: 'white',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             boxShadow: '0 8px 25px rgba(102, 126, 234, 0.4)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.2)'
+            backdropFilter: 'blur(20px)'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.1) rotate(90deg)';
